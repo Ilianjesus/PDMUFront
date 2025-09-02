@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 
 export function Scanner() {
     const [scanResults, setScanResults] = useState([]); 
-    const [scanner, setScanner] = useState(null);
     const [scanning, setScanning] = useState(true);
 
     useEffect(() => {
@@ -14,7 +13,6 @@ export function Scanner() {
             });
 
             newScanner.render(success, error);
-            setScanner(newScanner);
 
             return () => {
                 newScanner.clear().catch(err =>
@@ -25,8 +23,8 @@ export function Scanner() {
     }, [scanning]);
 
     async function success(result) {
-        // Evitar duplicados en la misma sesión
-        if (scanResults.find(r => r.id === result)) return;
+        // Evitar duplicados solo si ya se envió correctamente
+        if (scanResults.find(r => r.id === result && r.status === "Enviado")) return;
 
         setScanning(false); // detener el escáner mientras se envía
 
@@ -50,7 +48,7 @@ export function Scanner() {
         } catch (err) {
             console.error("No se pudo enviar al webhook:", err);
             setScanResults(prev => [...prev, { id: result, status: "Fallido" }]);
-            alert("Error al registrar el escaneo. Intenta de nuevo.");
+            alert("Error al registrar el escaneo. Puedes intentar de nuevo.");
         }
     }
 
@@ -74,7 +72,7 @@ export function Scanner() {
                 </button>
             )}
 
-            <h2>Resultados escaneados:</h2>
+            <h2>Resultados escaneados:::</h2>
             <ul>
                 {scanResults.map((res, idx) => (
                     <li key={idx}>
