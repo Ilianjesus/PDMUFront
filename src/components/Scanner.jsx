@@ -47,7 +47,8 @@ export function Scanner() {
 
     return (
         <div>
-            <h1>Escaner de QR</h1>
+            <h1>Escanea tu asistencia
+            </h1>
             { scanResult 
             ? <div>Succes: <a href={"http://"+scanResult}>{scanResult}</a>  </div>
             : <div id="reader"></div> 
