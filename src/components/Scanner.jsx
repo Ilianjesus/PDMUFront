@@ -2,7 +2,7 @@ import { Html5QrcodeScanner } from "html5-qrcode";
 import { useEffect, useState } from "react";
 
 export function Scanner() {
-    const [scanResults, setScanResults] = useState([]);
+    const [scanResults, setScanResults] = useState([]); 
     const [scanner, setScanner] = useState(null);
     const [scanning, setScanning] = useState(true);
 
@@ -25,28 +25,32 @@ export function Scanner() {
     }, [scanning]);
 
     async function success(result) {
-        if (!scanResults.includes(result)) {
-            setScanResults((prev) => [...prev, result]);
-            setScanning(false); // detener el escaneo después de un resultado válido
+        // Evitar duplicados en la misma sesión
+        if (scanResults.find(r => r.id === result)) return;
 
-            try {
-                const response = await fetch(
-                    "https://eurusdeveloper.app.n8n.cloud/webhook-test/265eb356-cb2b-48e9-b49b-59540a7fd28f",
-                    {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ ID: result }),
-                    }
-                );
+        setScanning(false); // detener el escáner mientras se envía
 
-                if (!response.ok) {
-                    throw new Error("Error en la solicitud " + response.statusText);
+        try {
+            const response = await fetch(
+                "https://eurusdeveloper.app.n8n.cloud/webhook-test/265eb356-cb2b-48e9-b49b-59540a7fd28f",
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ ID: result }),
                 }
+            );
 
-                console.log("Datos enviados correctamente:", result);
-            } catch (err) {
-                console.error("Error al enviar los datos: ", err);
+            if (!response.ok) {
+                throw new Error("Error en la solicitud: " + response.statusText);
             }
+
+            // Solo agregar a la lista si fue exitoso
+            setScanResults(prev => [...prev, { id: result, status: "Enviado" }]);
+            console.log("Datos enviados correctamente:", result);
+        } catch (err) {
+            console.error("No se pudo enviar al webhook:", err);
+            setScanResults(prev => [...prev, { id: result, status: "Fallido" }]);
+            alert("Error al registrar el escaneo. Intenta de nuevo.");
         }
     }
 
@@ -65,7 +69,7 @@ export function Scanner() {
             {scanning ? (
                 <div id="reader"></div>
             ) : (
-                <button onClick={restartScanner}>
+                <button onClick={restartScanner} style={{ margin: "10px 0" }}>
                     Realizar otro escaneo
                 </button>
             )}
@@ -73,7 +77,9 @@ export function Scanner() {
             <h2>Resultados escaneados:</h2>
             <ul>
                 {scanResults.map((res, idx) => (
-                    <li key={idx}>{res}</li>
+                    <li key={idx}>
+                        {res.id} - {res.status}
+                    </li>
                 ))}
             </ul>
         </div>
