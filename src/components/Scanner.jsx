@@ -21,7 +21,7 @@ export function Scanner() {
 
         //Guardamos el resultado y lo enviamos al webhook con POST
         try {
-            const response = await fetch('https://n8n.scolaris.com.mx/webhook-test/5e5fb667-eb3a-457c-ae33-0b1459584727', {
+            const response = await fetch('https://eurusdeveloper.app.n8n.cloud/webhook-test/265eb356-cb2b-48e9-b49b-59540a7fd28f', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
