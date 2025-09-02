@@ -26,7 +26,7 @@ export function Scanner() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ id: result }),
+                body: JSON.stringify({ ID: result }),
             }
         );
             if (!response.ok){
