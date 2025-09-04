@@ -5,6 +5,7 @@ import {RegistrarAsistencia} from './pages/RegistrarAsistencia';
 import {Scanner} from './components/Scanner';
 import {RegistrarElemento} from './pages/RegistrarElemento';
 import { Estadisticas } from './pages/Estadisticas';
+import { Layout } from './components/Layout';
 
 
 function App () {
@@ -12,12 +13,16 @@ function App () {
     <HashRouter>
         <Routes>
             <Route path='/' element={<Navigate to ="/login"/>}/>
-            <Route path='/home' element={<Home/>}/>
             <Route path='/login' element={<Login/>}/>
-            <Route path='/registrar-asistencia' element={<RegistrarAsistencia/>}/>
+
+            <Route element={<Layout/>}>
+                <Route path='/home' element={<Home/>}/>
+                <Route path='/registrar-asistencia' element={<RegistrarAsistencia/>}/>
+                <Route path='/RegistrarElemento' element={<RegistrarElemento/>}/>
+                <Route path='/Estadisticas' element={<Estadisticas/>}/>
+            </Route>
+
             <Route path='/Scanner' element={<Scanner/>}/>
-            <Route path='/RegistrarElemento' element={<RegistrarElemento/>}/>
-            <Route path='/Estadisticas' element={<Estadisticas/>}/>
         </Routes>
     </HashRouter>
       );
