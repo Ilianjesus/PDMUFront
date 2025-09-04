@@ -3,6 +3,8 @@ import {Home} from './pages/Home';
 import {Login} from './pages/Login';
 import {RegistrarAsistencia} from './pages/RegistrarAsistencia';
 import {Scanner} from './components/Scanner';
+import {RegistrarElemento} from './pages/RegistrarElemento';
+import { Estadisticas } from './pages/Estadisticas';
 
 
 function App () {
@@ -14,6 +16,8 @@ function App () {
             <Route path='/login' element={<Login/>}/>
             <Route path='/registrar-asistencia' element={<RegistrarAsistencia/>}/>
             <Route path='/Scanner' element={<Scanner/>}/>
+            <Route path='/RegistrarElemento' element={<RegistrarElemento/>}/>
+            <Route path='/Estadisticas' element={<Estadisticas/>}/>
         </Routes>
     </HashRouter>
       );
