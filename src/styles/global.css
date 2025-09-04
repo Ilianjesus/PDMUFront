@@ -5,6 +5,8 @@ body, html {
     padding: 0;
     font-family: 'Roboto', sans-serif;
   }
+
+  /* Estilos para Login */
   
   .login-container {
     height: 100vh;
@@ -58,7 +60,8 @@ body, html {
     margin-bottom: 1.5rem;
     border: 3px solid #FFC107; /* amarillo mango */
   }
-  
+ 
+  /* Estilos para Layout y navegación */
   .app-container {
   display: flex;
   flex-direction: column;
@@ -102,4 +105,102 @@ body, html {
 
 .tab-item.active {
   color: #facc15; /* amarillo para marcar el tab activo */
+}
+
+/* Estilos para RegistrarElemento */
+.registrar-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: #0D1B2A; /* azul oscuro */
+  padding: 0 1rem;
+}
+
+.registrar-title {
+  color: white;
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.mensaje-exito {
+  color: #4CAF50; /* verde */
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.button:hover {
+  opacity: 0.9;
+}
+
+.mensaje-error {
+  color: #FF5252; /* rojo */
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.link-button {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+/* Estilos para Scanner */
+.scanner-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  background-color: #0D1B2A;
+  padding: 2rem 1rem;
+}
+
+.scanner-title {
+  color: white;
+  font-size: 2rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.scanner-box {
+  width: 300px;
+  max-width: 90vw;
+  margin-bottom: 1rem;
+}
+
+.results-title {
+  color: white;
+  font-size: 1.5rem;
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+.results-list {
+  list-style: none;
+  padding: 0;
+  width: 100%;
+  max-width: 400px;
+}
+
+.results-list li {
+  background-color: #1B263B;
+  color: white;
+  padding: 0.6rem 1rem;
+  margin: 0.3rem 0;
+  border-radius: 12px;
+  font-size: 1rem;
+  display: flex;
+  justify-content: space-between;
+}
+
+.resultado-exito {
+  border-left: 5px solid #4CAF50;
+}
+
+.resultado-error {
+  border-left: 5px solid #FF5252;
 }
