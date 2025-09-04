@@ -6,7 +6,7 @@ export function Home() {
     <div>
         <h2>Home</h2>
         <Link to= "/registrar-asistencia">
-        <button>Registrar Asistencia</button>
+        <button className="button" >Registrar Asistencia</button>
         </Link>
     </div>
 

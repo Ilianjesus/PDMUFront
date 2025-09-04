@@ -1,12 +1,15 @@
 import { Link } from "react-router-dom";
+import "../styles/global.css"; // importa tu CSS global
 
 export function Login() {
-    return (
-    <div>
-        <h2>Este es el login</h2>
-        <Link to="/home">
-        <button>Iniciar Sesion</button>
-        </Link>
+  return (
+    <div className="login-container">
+      <h1 className="login-title">Bienvenido</h1>
+      <input type="text" placeholder="Usuario" className="login-input" />
+      <input type="password" placeholder="Contraseña" className="login-input" />
+      <Link to="/home" style={{ width: "100%", textAlign: "center" }}>
+        <button className="button">Iniciar Sesión</button>
+      </Link>
     </div>
-    );
+  );
 }
