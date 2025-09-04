@@ -30,7 +30,7 @@ export function Scanner() {
 
         try {
             const response = await fetch(
-                "https://eurusdeveloper.app.n8n.cloud/webhook-test/265eb356-cb2b-48e9-b49b-59540a7fd28f",
+                "https://n8n.scolaris.com.mx/webhook-test/265eb356-cb2b-48e9-b49b-59540a7fd28f",
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
