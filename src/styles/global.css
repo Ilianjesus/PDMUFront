@@ -44,9 +44,17 @@ body, html {
     font-size: 1rem;
     font-weight: bold;
     cursor: pointer;
-    width: 80%;
+    width:100%;
     max-width: 300px;
   }
+
+  .link-button {
+    display: block;   /* 🔹 Hace que ocupe toda la línea */
+    width: 100%;
+    max-width: 300px; /* 🔹 igual que el botón */
+    text-decoration: none; /* 🔹 para quitar el subrayado */
+  }
+  
   
   .login-button:hover {
     opacity: 0.9;
@@ -189,7 +197,7 @@ body, html {
 .registrar-form {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   width: 100%;
   max-width: 400px;
 }
@@ -244,7 +252,10 @@ body, html {
   .registrar-input,
   .registrar-select,
   .registrar-textarea {
-    font-size: 0.9rem;
+    width:  100%;
   }
+}
+.form-group {
+  width: 100%; /* 🔹 que los inputs usen todo el ancho disponible */
 }
 
