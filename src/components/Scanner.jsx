@@ -9,37 +9,29 @@ export function Scanner() {
   useEffect(() => {
     async function initScanner() {
       try {
-        // Pedir permisos a la cámara
+        // Pedir permisos de cámara
         await navigator.mediaDevices.getUserMedia({ video: true });
 
         const html5QrCode = new Html5Qrcode("reader");
 
-        // Intentar abrir la cámara trasera
-        const cameras = await Html5Qrcode.getCameras();
-        if (cameras && cameras.length) {
-          const backCamera = cameras.find((cam) =>
-            cam.label.toLowerCase().includes("back")
-          );
+        // 🔑 Forzar cámara trasera con facingMode
+        await html5QrCode.start(
+          { facingMode: { exact: "environment" } }, // preferir trasera
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+          },
+          success,
+          error
+        );
 
-          const cameraId = backCamera ? backCamera.id : cameras[0].id;
-
-          await html5QrCode.start(
-            cameraId,
-            {
-              fps: 10,
-              qrbox: { width: 250, height: 250 },
-            },
-            success,
-            error
-          );
-
-          setScanner(html5QrCode);
-        }
+        setScanner(html5QrCode);
       } catch (err) {
         console.error("No se pudo iniciar el escáner:", err);
-        alert("Error: No se pudo acceder a la cámara.");
+        alert("Error: No se pudo acceder a la cámara trasera.");
       }
     }
+
 
     initScanner();
 
