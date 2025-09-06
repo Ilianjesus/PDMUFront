@@ -107,47 +107,6 @@ body, html {
   color: #facc15; /* amarillo para marcar el tab activo */
 }
 
-/* Estilos para RegistrarElemento */
-.registrar-container {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  background-color: #0D1B2A; /* azul oscuro */
-  padding: 0 1rem;
-}
-
-.registrar-title {
-  color: white;
-  font-size: 2rem;
-  margin-bottom: 2rem;
-  text-align: center;
-}
-
-.mensaje-exito {
-  color: #4CAF50; /* verde */
-  margin-top: 1rem;
-  text-align: center;
-}
-
-.button:hover {
-  opacity: 0.9;
-}
-
-.mensaje-error {
-  color: #FF5252; /* rojo */
-  margin-top: 1rem;
-  text-align: center;
-}
-
-.link-button {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  margin-top: 1rem;
-}
-
 /* Estilos para Scanner */
 .scanner-container {
   min-height: 100vh;
@@ -206,9 +165,6 @@ body, html {
 }
 
 /* Estilos para RegistrarElementos */
-/* Estilos para RegistrarElemento */
-
-/* Estilos para RegistrarElemento */
 
 .registrar-container {
   min-height: 100vh; /* 🔹 Cambié height por min-height para que crezca si hace falta */
@@ -218,7 +174,7 @@ body, html {
   align-items: center;
   background-color: #0D1B2A; /* azul oscuro */
   padding: 2rem;
-  padding-bottom: 6rem; /* 🔹 espacio extra para que el tab bar no tape el botón */
+  padding-bottom: 8rem; /* 🔹 espacio extra para que el tab bar no tape el botón */
   box-sizing: border-box;
 }
 
@@ -291,3 +247,4 @@ body, html {
     font-size: 0.9rem;
   }
 }
+
