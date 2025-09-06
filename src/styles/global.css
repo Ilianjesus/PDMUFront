@@ -204,3 +204,71 @@ body, html {
 .resultado-error {
   border-left: 5px solid #FF5252;
 }
+
+/* Estilos para RegistrarElementos */
+/* Estilos para RegistrarElemento */
+
+.registrar-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: #0D1B2A; /* azul oscuro */
+  padding: 2rem;
+}
+
+.registrar-title {
+  color: white;
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.registrar-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 400px;
+}
+
+.registrar-label {
+  color: white;
+  font-size: 1rem;
+  align-self: flex-start;
+  margin: 0.5rem 0 0.2rem 0.5rem;
+}
+
+.registrar-input,
+.registrar-select,
+.registrar-textarea {
+  padding: 0.8rem 1rem;
+  margin: 0.3rem 0 1rem 0;
+  border-radius: 12px;
+  border: none;
+  width: 100%;
+  font-size: 1rem;
+}
+
+.registrar-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.registrar-button {
+  margin-top: 1rem;
+  padding: 0.8rem 2rem;
+  border-radius: 12px;
+  border: none;
+  background-color: #FFC107; /* amarillo mango */
+  color: #0D1B2A; /* azul del fondo */
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  width: 100%;
+}
+
+.registrar-button:hover {
+  opacity: 0.9;
+}
