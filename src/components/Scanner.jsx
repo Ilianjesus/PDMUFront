@@ -1,33 +1,60 @@
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { Html5Qrcode } from "html5-qrcode";
 import { useEffect, useState } from "react";
-import "../styles/global.css"; // usamos el mismo CSS global
+import "../styles/global.css";
 
 export function Scanner() {
   const [scanResults, setScanResults] = useState([]);
-  const [scanning, setScanning] = useState(true);
+  const [scanner, setScanner] = useState(null);
 
   useEffect(() => {
-    if (scanning) {
-      const newScanner = new Html5QrcodeScanner("reader", {
-        qrbox: { width: 250, height: 250 },
-        fps: 5,
-      });
+    async function initScanner() {
+      try {
+        // Pedir permisos a la cámara
+        await navigator.mediaDevices.getUserMedia({ video: true });
 
-      newScanner.render(success, error);
+        const html5QrCode = new Html5Qrcode("reader");
 
-      return () => {
-        newScanner.clear().catch((err) =>
-          console.error("Error al limpiar scanner:", err)
-        );
-      };
+        // Intentar abrir la cámara trasera
+        const cameras = await Html5Qrcode.getCameras();
+        if (cameras && cameras.length) {
+          const backCamera = cameras.find((cam) =>
+            cam.label.toLowerCase().includes("back")
+          );
+
+          const cameraId = backCamera ? backCamera.id : cameras[0].id;
+
+          await html5QrCode.start(
+            cameraId,
+            {
+              fps: 10,
+              qrbox: { width: 250, height: 250 },
+            },
+            success,
+            error
+          );
+
+          setScanner(html5QrCode);
+        }
+      } catch (err) {
+        console.error("No se pudo iniciar el escáner:", err);
+        alert("Error: No se pudo acceder a la cámara.");
+      }
     }
-  }, [scanning]);
+
+    initScanner();
+
+    return () => {
+      if (scanner) {
+        scanner.stop().catch((err) =>
+          console.error("Error al detener scanner:", err)
+        );
+      }
+    };
+  }, []);
 
   async function success(result) {
     if (scanResults.find((r) => r.id === result && r.status === "Enviado"))
       return;
-
-    setScanning(false);
 
     try {
       const response = await fetch(
@@ -39,7 +66,8 @@ export function Scanner() {
         }
       );
 
-      if (!response.ok) throw new Error("Error en la solicitud: " + response.statusText);
+      if (!response.ok)
+        throw new Error("Error en la solicitud: " + response.statusText);
 
       setScanResults((prev) => [...prev, { id: result, status: "Enviado" }]);
     } catch (err) {
@@ -53,28 +81,20 @@ export function Scanner() {
     console.warn(err);
   }
 
-  function restartScanner() {
-    setScanning(true);
-  }
-
   return (
     <div className="scanner-container">
       <h1 className="scanner-title">Escanea tu asistencia</h1>
 
-      {scanning ? (
-        <div id="reader" className="scanner-box"></div>
-      ) : (
-        <button onClick={restartScanner} className="button">
-          Realizar otro escaneo
-        </button>
-      )}
+      <div id="reader" className="scanner-box"></div>
 
       <h2 className="results-title">Resultados escaneados:</h2>
       <ul className="results-list">
         {scanResults.map((res, idx) => (
           <li
             key={idx}
-            className={res.status === "Enviado" ? "resultado-exito" : "resultado-error"}
+            className={
+              res.status === "Enviado" ? "resultado-exito" : "resultado-error"
+            }
           >
             {res.id} - {res.status}
           </li>
