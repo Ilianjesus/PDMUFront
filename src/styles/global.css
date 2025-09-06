@@ -208,21 +208,26 @@ body, html {
 /* Estilos para RegistrarElementos */
 /* Estilos para RegistrarElemento */
 
+/* Estilos para RegistrarElemento */
+
 .registrar-container {
-  height: 100vh;
+  min-height: 100vh; /* 🔹 Cambié height por min-height para que crezca si hace falta */
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start; /* 🔹 en vez de centrar todo, que empiece arriba */
   align-items: center;
   background-color: #0D1B2A; /* azul oscuro */
   padding: 2rem;
+  padding-bottom: 6rem; /* 🔹 espacio extra para que el tab bar no tape el botón */
+  box-sizing: border-box;
 }
 
 .registrar-title {
   color: white;
   font-size: 2rem;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   text-align: center;
+  word-break: break-word; /* 🔹 evita cortes raros en títulos largos */
 }
 
 .registrar-form {
@@ -249,6 +254,7 @@ body, html {
   border: none;
   width: 100%;
   font-size: 1rem;
+  box-sizing: border-box; /* 🔹 asegura que no se salga en móviles */
 }
 
 .registrar-textarea {
@@ -271,4 +277,17 @@ body, html {
 
 .registrar-button:hover {
   opacity: 0.9;
+}
+
+/* 🔹 Extra: mejora responsividad en pantallas muy pequeñas */
+@media (max-width: 400px) {
+  .registrar-title {
+    font-size: 1.5rem;
+  }
+  
+  .registrar-input,
+  .registrar-select,
+  .registrar-textarea {
+    font-size: 0.9rem;
+  }
 }
