@@ -14,6 +14,14 @@ export function RegistrarElemento() {
     enfermedades: "",
   });
 
+  const [files, setFiles] = useState({
+    acataNacimiento: null,
+    curp: null,
+    comprobanteDomicilio: null,
+    ineTutor: null,
+    certificadoMedico: null, 
+  });
+
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -21,18 +29,37 @@ export function RegistrarElemento() {
     });
   };
 
+  const handleFileChange = (e) => {
+    setFiles({
+      ...files,
+      [e.target.name]: e.target.files[0],
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
+      // Usamos FormData para enviar texto + archivos
+      const data = new FormData();
+
+      // Agregar los campos de texto
+      for (const key in formData) {
+        data.append(key, formData[key]);
+      }
+
+      // Agregar los archivos PDF
+      for (const key in files) {
+        if (files[key]) {
+          data.append(key, files[key]);
+        }
+      }
+
       const response = await fetch(
         "https://n8n.scolaris.com.mx/webhook-test/799fdd72-8c7c-42bb-9269-01077461fc38",
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(formData),
+          body: data, // No se pone Content-Type porque FormData lo hace automático
         }
       );
 
@@ -49,6 +76,14 @@ export function RegistrarElemento() {
           telefonoTutor: "",
           enfermedades: "",
         });
+        setFiles({
+          actaNacimiento: null,
+          curp: null,
+          comprobanteDomicilio: null,
+          ineTutor: null,
+          certificadoMedico: null,
+        });
+        e.target.reset(); // Limpia los inputs de archivo
       } else {
         alert("Error al enviar el registro ❌");
       }
@@ -177,6 +212,66 @@ export function RegistrarElemento() {
             value={formData.enfermedades}
             onChange={handleChange}
             placeholder="Indicar si tiene alguna condición médica"
+          />
+        </div>
+
+        <div className="form-group">
+          <label className="registrar-label">Acta de nacimiento (PDF):</label>
+          <input
+            className="registrar-input"
+            type="file"
+            name="actaNacimiento"
+            accept="application/pdf"
+            onChange={handleFileChange}
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label className="registrar-label">CURP (PDF):</label>
+          <input
+            className="registrar-input"
+            type="file"
+            name="curp"
+            accept="application/pdf"
+            onChange={handleFileChange}
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label className="registrar-label">Comprobante de domicilio (PDF):</label>
+          <input
+            className="registrar-input"
+            type="file"
+            name="comprobanteDomicilio"
+            accept="application/pdf"
+            onChange={handleFileChange}
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label className="registrar-label">INE del padre/tutor (PDF):</label>
+          <input
+            className="registrar-input"
+            type="file"
+            name="ineTutor"
+            accept="application/pdf"
+            onChange={handleFileChange}
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label className="registrar-label">Certificado médico (PDF):</label>
+          <input
+            className="registrar-input"
+            type="file"
+            name="certificadoMedico"
+            accept="application/pdf"
+            onChange={handleFileChange}
+            required
           />
         </div>
 
