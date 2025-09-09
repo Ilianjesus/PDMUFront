@@ -1,4 +1,4 @@
-import { Html5Qrcode, Html5QrcodeScanner } from "html5-qrcode";
+import { Html5Qrcode } from "html5-qrcode";
 import { useEffect, useState } from "react";
 import "../styles/global.css";
 
@@ -11,29 +11,43 @@ export function Scanner() {
 
     async function initScanner() {
       try {
-        // Detectar cámaras disponibles
-        const devices = await Html5Qrcode.getCameras();
-
-        if (!devices || devices.length === 0) {
-          alert("No se encontró ninguna cámara en el dispositivo.");
-          return;
-        }
-
-        // Buscar cámara trasera (environment)
-        const backCamera = devices.find((d) =>
-          d.label.toLowerCase().includes("back")
-        );
-
-        const cameraId = backCamera ? backCamera.id : devices[0].id;
-
         html5QrCode = new Html5Qrcode("reader");
 
-        await html5QrCode.start(
-          { deviceId: { exact: cameraId } }, // cámara trasera si existe
-          { fps: 5, qrbox: { width: 250, height: 250 } },
-          success,
-          error
-        );
+        // Detectar si es iOS Safari
+        const isIOS =
+          /iPad|iPhone|iPod/.test(navigator.userAgent) &&
+          !window.MSStream;
+
+        if (isIOS) {
+          // 🔹 En iOS usamos facingMode directamente
+          await html5QrCode.start(
+            { facingMode: { exact: "environment" } },
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            success,
+            error
+          );
+        } else {
+          // 🔹 En Android/otros navegadores, usamos getCameras
+          const devices = await Html5Qrcode.getCameras();
+
+          if (!devices || devices.length === 0) {
+            alert("No se encontró ninguna cámara en el dispositivo.");
+            return;
+          }
+
+          const backCamera = devices.find((d) =>
+            d.label.toLowerCase().includes("back")
+          );
+
+          const cameraId = backCamera ? backCamera.id : devices[0].id;
+
+          await html5QrCode.start(
+            { deviceId: { exact: cameraId } },
+            { fps: 5, qrbox: { width: 250, height: 250 } },
+            success,
+            error
+          );
+        }
       } catch (err) {
         console.error("Error al iniciar el scanner:", err);
         alert(
