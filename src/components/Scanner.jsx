@@ -13,46 +13,39 @@ export function Scanner() {
       try {
         html5QrCode = new Html5Qrcode("reader");
 
-        // Detectar si es iOS Safari
-        const isIOS =
-          /iPad|iPhone|iPod/.test(navigator.userAgent) &&
-          !window.MSStream;
+        // Intentar abrir siempre la cámara trasera primero
+        await html5QrCode.start(
+          { facingMode: "environment" }, // forzar cámara trasera
+          { fps: 5, qrbox: { width: 250, height: 250 } },
+          success,
+          error
+        );
+      } catch (err) {
+        console.warn(
+          "No se pudo abrir la cámara trasera, intentando con la primera disponible...",
+          err
+        );
 
-        if (isIOS) {
-          // 🔹 En iOS usamos facingMode directamente
-          await html5QrCode.start(
-            { facingMode: { exact: "environment" } },
-            { fps: 10, qrbox: { width: 250, height: 250 } },
-            success,
-            error
-          );
-        } else {
-          // 🔹 En Android/otros navegadores, usamos getCameras
+        try {
           const devices = await Html5Qrcode.getCameras();
-
           if (!devices || devices.length === 0) {
             alert("No se encontró ninguna cámara en el dispositivo.");
             return;
           }
 
-          const backCamera = devices.find((d) =>
-            d.label.toLowerCase().includes("back")
-          );
-
-          const cameraId = backCamera ? backCamera.id : devices[0].id;
-
+          // usar la primera cámara como fallback
           await html5QrCode.start(
-            { deviceId: { exact: cameraId } },
+            { deviceId: { exact: devices[0].id } },
             { fps: 5, qrbox: { width: 250, height: 250 } },
             success,
             error
           );
+        } catch (err2) {
+          console.error("Error al iniciar el scanner:", err2);
+          alert(
+            "No se pudo acceder a la cámara. Revisa los permisos en tu navegador."
+          );
         }
-      } catch (err) {
-        console.error("Error al iniciar el scanner:", err);
-        alert(
-          "No se pudo acceder a la cámara. Revisa los permisos en tu navegador."
-        );
       }
     }
 
