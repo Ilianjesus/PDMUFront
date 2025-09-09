@@ -5,54 +5,58 @@ import "../styles/global.css";
 export function Scanner() {
   const [scanResults, setScanResults] = useState([]);
   const [scanner, setScanner] = useState(null);
+  const [scanning, setScanning] = useState(false);
 
   useEffect(() => {
-    async function initScanner() {
-      try {
-        // ✅ Pedir permisos de cámara
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-        });
-        stream.getTracks().forEach((track) => track.stop()); // liberamos stream (solo pedimos permiso)
-
-        // ✅ Obtener las cámaras disponibles
-        const devices = await Html5Qrcode.getCameras();
-        if (devices && devices.length) {
-          // Buscar cámara trasera
-          const backCamera =
-            devices.find((d) =>
-              d.label.toLowerCase().includes("back")
-            ) || devices[0];
-
-          const html5QrCode = new Html5Qrcode("reader");
-          setScanner(html5QrCode);
-
-          // ✅ Iniciar escaneo automáticamente
-          await html5QrCode.start(
-            { deviceId: { exact: backCamera.id } },
-            { fps: 5, qrbox: { width: 250, height: 250 } },
-            success,
-            error
-          );
-        }
-      } catch (err) {
-        console.error("No se pudo iniciar el escáner:", err);
-        alert("Error al acceder a la cámara");
-      }
-    }
-
     initScanner();
 
-    // Cleanup al desmontar
     return () => {
       if (scanner) {
         scanner.stop().catch(() => {});
         scanner.clear().catch(() => {});
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  async function initScanner() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+      });
+      stream.getTracks().forEach((track) => track.stop());
+
+      const devices = await Html5Qrcode.getCameras();
+      if (devices && devices.length) {
+        const backCamera =
+          devices.find((d) => d.label.toLowerCase().includes("back")) ||
+          devices[0];
+
+        const html5QrCode = new Html5Qrcode("reader");
+        setScanner(html5QrCode);
+
+        await html5QrCode.start(
+          { deviceId: { exact: backCamera.id } },
+          { fps: 5, qrbox: { width: 250, height: 250 } },
+          success,
+          error
+        );
+
+        setScanning(true);
+      }
+    } catch (err) {
+      console.error("No se pudo iniciar el escáner:", err);
+      alert("Error al acceder a la cámara");
+    }
+  }
+
   async function success(result) {
+    // 🚨 Detener el escaneo inmediatamente después de un éxito
+    if (scanner) {
+      await scanner.stop().catch(() => {});
+      setScanning(false);
+    }
+
     if (scanResults.find((r) => r.id === result && r.status === "Enviado"))
       return;
 
@@ -69,17 +73,17 @@ export function Scanner() {
       if (!response.ok)
         throw new Error("Error en la solicitud: " + response.statusText);
 
-      setScanResults((prev) => [
-        ...prev,
-        { id: result, status: "Enviado" },
-      ]);
+      setScanResults((prev) => [...prev, { id: result, status: "Enviado" }]);
     } catch (err) {
       console.error("No se pudo enviar al webhook:", err);
-      setScanResults((prev) => [
-        ...prev,
-        { id: result, status: "Fallido" },
-      ]);
+      setScanResults((prev) => [...prev, { id: result, status: "Fallido" }]);
       alert("Error al registrar el escaneo. Puedes intentar de nuevo.");
+    }
+
+    // ✅ Preguntar si quiere volver a escanear
+    const continuar = window.confirm("¿Quieres escanear otro código?");
+    if (continuar) {
+      initScanner();
     }
   }
 
@@ -92,15 +96,19 @@ export function Scanner() {
       <h1 className="scanner-title">Escanea tu asistencia</h1>
       <div id="reader" className="scanner-box"></div>
 
+      {!scanning && (
+        <button onClick={initScanner} className="boton-reintentar">
+          Iniciar escáner
+        </button>
+      )}
+
       <h2 className="results-title">Resultados escaneados:</h2>
       <ul className="results-list">
         {scanResults.map((res, idx) => (
           <li
             key={idx}
             className={
-              res.status === "Enviado"
-                ? "resultado-exito"
-                : "resultado-error"
+              res.status === "Enviado" ? "resultado-exito" : "resultado-error"
             }
           >
             {res.id} - {res.status}
