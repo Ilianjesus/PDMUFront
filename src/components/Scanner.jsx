@@ -5,7 +5,6 @@ import "../styles/global.css";
 export function Scanner() {
   const [scanResults, setScanResults] = useState([]);
   const [scanner, setScanner] = useState(null);
-  const [scanning, setScanning] = useState(false);
 
   useEffect(() => {
     async function initScanner() {
@@ -35,8 +34,6 @@ export function Scanner() {
             success,
             error
           );
-
-          setScanning(true);
         }
       } catch (err) {
         console.error("No se pudo iniciar el escáner:", err);
