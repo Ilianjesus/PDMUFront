@@ -9,18 +9,13 @@ export function Scanner() {
   useEffect(() => {
     async function initScanner() {
       try {
-        // Pedir permisos de cámara
         await navigator.mediaDevices.getUserMedia({ video: true });
 
         const html5QrCode = new Html5Qrcode("reader");
 
-        // 🔑 Forzar cámara trasera con facingMode
         await html5QrCode.start(
-          { facingMode: { exact: "environment" } }, // preferir trasera
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
-          },
+          { facingMode: { exact: "environment" } },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
           success,
           error
         );
@@ -28,10 +23,8 @@ export function Scanner() {
         setScanner(html5QrCode);
       } catch (err) {
         console.error("No se pudo iniciar el escáner:", err);
-        alert("Error: No se pudo acceder a la cámara trasera.");
       }
     }
-
 
     initScanner();
 
@@ -45,8 +38,11 @@ export function Scanner() {
   }, []);
 
   async function success(result) {
-    if (scanResults.find((r) => r.id === result && r.status === "Enviado"))
-      return;
+    // Si ya se procesó este ID, no volver a procesar
+    if (scanResults.find((r) => r.id === result)) return;
+
+    // Guardar como "Procesando"
+    setScanResults((prev) => [...prev, { id: result, status: "Procesando" }]);
 
     try {
       const response = await fetch(
@@ -58,19 +54,34 @@ export function Scanner() {
         }
       );
 
-      if (!response.ok)
-        throw new Error("Error en la solicitud: " + response.statusText);
+      if (!response.ok) throw new Error("Error en la solicitud");
 
-      setScanResults((prev) => [...prev, { id: result, status: "Enviado" }]);
+      // ✅ Actualizar el estado a "Enviado"
+      setScanResults((prev) =>
+        prev.map((r) =>
+          r.id === result ? { ...r, status: "Enviado" } : r
+        )
+      );
+
+      // Pausar un momento el escáner para evitar bucle
+      if (scanner) {
+        scanner.pause();
+        setTimeout(() => scanner.resume(), 2000);
+      }
     } catch (err) {
       console.error("No se pudo enviar al webhook:", err);
-      setScanResults((prev) => [...prev, { id: result, status: "Fallido" }]);
-      alert("Error al registrar el escaneo. Puedes intentar de nuevo.");
+
+      // ❌ Actualizar el estado a "Fallido"
+      setScanResults((prev) =>
+        prev.map((r) =>
+          r.id === result ? { ...r, status: "Fallido" } : r
+        )
+      );
     }
   }
 
   function error(err) {
-    console.warn(err);
+    console.warn("Scanner error:", err);
   }
 
   return (
@@ -85,7 +96,11 @@ export function Scanner() {
           <li
             key={idx}
             className={
-              res.status === "Enviado" ? "resultado-exito" : "resultado-error"
+              res.status === "Enviado"
+                ? "resultado-exito"
+                : res.status === "Procesando"
+                ? "resultado-procesando"
+                : "resultado-error"
             }
           >
             {res.id} - {res.status}
