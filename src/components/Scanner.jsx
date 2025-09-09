@@ -5,11 +5,50 @@ import "../styles/global.css";
 export function Scanner() {
   const [scanResults, setScanResults] = useState([]);
   const [scanner, setScanner] = useState(null);
-  const [isScanning, setIsScanning] = useState(false);
 
   useEffect(() => {
+    async function initScanner() {
+      try {
+        // ✅ Pedir permisos de cámara
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        stream.getTracks().forEach((track) => track.stop()); // liberamos stream
+
+        // ✅ Obtener las cámaras disponibles
+        const devices = await Html5Qrcode.getCameras();
+        if (!devices || devices.length === 0) throw new Error("No se encontraron cámaras");
+
+        // Detectar plataforma iOS
+        const isiOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+        let cameraConfig;
+        if (isiOS) {
+          // iOS: usar facingMode
+          cameraConfig = { facingMode: "environment" };
+        } else {
+          // Android/otros: buscar cámara trasera por label
+          const backCamera = devices.find((d) => d.label.toLowerCase().includes("back")) || devices[0];
+          cameraConfig = { deviceId: { exact: backCamera.id } };
+        }
+
+        const html5QrCode = new Html5Qrcode("reader");
+        setScanner(html5QrCode);
+
+        // ✅ Iniciar escaneo automáticamente
+        await html5QrCode.start(
+          cameraConfig,
+          { fps: 5, qrbox: { width: 250, height: 250 } },
+          success,
+          error
+        );
+      } catch (err) {
+        console.error("No se pudo iniciar el escáner:", err);
+        alert("Error al acceder a la cámara");
+      }
+    }
+
     initScanner();
 
+    // Cleanup al desmontar
     return () => {
       if (scanner) {
         scanner.stop().catch(() => {});
@@ -18,35 +57,9 @@ export function Scanner() {
     };
   }, []);
 
-  async function initScanner() {
-    try {
-      const devices = await Html5Qrcode.getCameras();
-      if (devices && devices.length) {
-        const backCamera =
-          devices.find((d) => d.label.toLowerCase().includes("back")) ||
-          devices[0];
-
-        const html5QrCode = new Html5Qrcode("reader");
-        setScanner(html5QrCode);
-
-        await html5QrCode.start(
-          { deviceId: { exact: backCamera.id } },
-          { fps: 5, qrbox: { width: 250, height: 250 } },
-          success,
-          error
-        );
-
-        setIsScanning(true);
-      }
-    } catch (err) {
-      console.error("No se pudo iniciar el escáner:", err);
-      alert("Error al acceder a la cámara");
-    }
-  }
-
+  // Función cuando se escanea correctamente
   async function success(result) {
-    if (scanResults.find((r) => r.id === result && r.status === "Enviado"))
-      return;
+    if (scanResults.find((r) => r.id === result && r.status === "Enviado")) return;
 
     try {
       const response = await fetch(
@@ -58,17 +71,9 @@ export function Scanner() {
         }
       );
 
-      if (!response.ok)
-        throw new Error("Error en la solicitud: " + response.statusText);
+      if (!response.ok) throw new Error("Error en la solicitud: " + response.statusText);
 
       setScanResults((prev) => [...prev, { id: result, status: "Enviado" }]);
-
-      // ✅ Detener el escaneo después de éxito
-      if (scanner) {
-        await scanner.stop().catch(() => {});
-        await scanner.clear().catch(() => {});
-        setIsScanning(false);
-      }
     } catch (err) {
       console.error("No se pudo enviar al webhook:", err);
       setScanResults((prev) => [...prev, { id: result, status: "Fallido" }]);
@@ -76,30 +81,9 @@ export function Scanner() {
     }
   }
 
+  // Función cuando falla el escaneo
   function error(err) {
     console.warn("Escaneo fallido:", err);
-  }
-
-  async function handleNewScan() {
-    if (scanner) {
-      try {
-        const devices = await Html5Qrcode.getCameras();
-        const backCamera =
-          devices.find((d) => d.label.toLowerCase().includes("back")) ||
-          devices[0];
-
-        await scanner.start(
-          { deviceId: { exact: backCamera.id } },
-          { fps: 5, qrbox: { width: 250, height: 250 } },
-          success,
-          error
-        );
-
-        setIsScanning(true);
-      } catch (err) {
-        console.error("No se pudo reiniciar el escáner:", err);
-      }
-    }
   }
 
   return (
@@ -107,20 +91,12 @@ export function Scanner() {
       <h1 className="scanner-title">Escanea tu asistencia</h1>
       <div id="reader" className="scanner-box"></div>
 
-      {!isScanning && (
-        <button className="boton-reintentar" onClick={handleNewScan}>
-          Hacer otro escaneo
-        </button>
-      )}
-
       <h2 className="results-title">Resultados escaneados:</h2>
       <ul className="results-list">
         {scanResults.map((res, idx) => (
           <li
             key={idx}
-            className={
-              res.status === "Enviado" ? "resultado-exito" : "resultado-error"
-            }
+            className={res.status === "Enviado" ? "resultado-exito" : "resultado-error"}
           >
             {res.id} - {res.status}
           </li>
