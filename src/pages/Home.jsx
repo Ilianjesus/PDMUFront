@@ -16,6 +16,7 @@ export function Home() {
             <blockquote style={{ marginTop: "20px", fontStyle: "italic" }}>
                 {puntoAleatorio}
             </blockquote>
+            
         </div>
     );
 }
