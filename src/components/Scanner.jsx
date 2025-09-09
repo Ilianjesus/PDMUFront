@@ -1,26 +1,61 @@
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { Html5Qrcode, Html5QrcodeScanner } from "html5-qrcode";
 import { useEffect, useState } from "react";
-import "../styles/global.css"; // usamos el mismo CSS global
+import "../styles/global.css";
 
 export function Scanner() {
   const [scanResults, setScanResults] = useState([]);
   const [scanning, setScanning] = useState(true);
 
   useEffect(() => {
-    if (scanning) {
-      const newScanner = new Html5QrcodeScanner("reader", {
-        qrbox: { width: 250, height: 250 },
-        fps: 5,
-      });
+    let html5QrCode;
 
-      newScanner.render(success, error);
+    async function initScanner() {
+      try {
+        // Detectar cámaras disponibles
+        const devices = await Html5Qrcode.getCameras();
 
-      return () => {
-        newScanner.clear().catch((err) =>
-          console.error("Error al limpiar scanner:", err)
+        if (!devices || devices.length === 0) {
+          alert("No se encontró ninguna cámara en el dispositivo.");
+          return;
+        }
+
+        // Buscar cámara trasera (environment)
+        const backCamera = devices.find((d) =>
+          d.label.toLowerCase().includes("back")
         );
-      };
+
+        const cameraId = backCamera ? backCamera.id : devices[0].id;
+
+        html5QrCode = new Html5Qrcode("reader");
+
+        await html5QrCode.start(
+          { deviceId: { exact: cameraId } }, // cámara trasera si existe
+          { fps: 5, qrbox: { width: 250, height: 250 } },
+          success,
+          error
+        );
+      } catch (err) {
+        console.error("Error al iniciar el scanner:", err);
+        alert(
+          "No se pudo acceder a la cámara. Revisa los permisos en tu navegador."
+        );
+      }
     }
+
+    if (scanning) {
+      initScanner();
+    }
+
+    return () => {
+      if (html5QrCode) {
+        html5QrCode
+          .stop()
+          .then(() => html5QrCode.clear())
+          .catch((err) =>
+            console.error("Error al detener/limpiar scanner:", err)
+          );
+      }
+    };
   }, [scanning]);
 
   async function success(result) {
