@@ -234,7 +234,7 @@ export function RegistrarElemento() {
             name="ineTutor"
             accept="application/pdf"
             onChange={handleFileChange}
-            required
+            
           />
         </div>
 
@@ -246,7 +246,7 @@ export function RegistrarElemento() {
             name="certificadoMedico"
             accept="application/pdf"
             onChange={handleFileChange}
-            required
+            
           />
         </div>
 
@@ -258,7 +258,7 @@ export function RegistrarElemento() {
             name="comprobanteDomicilio"
             accept="application/pdf"
             onChange={handleFileChange}
-            required
+            
           />
         </div>
 
@@ -270,7 +270,7 @@ export function RegistrarElemento() {
             name="actaNacimiento"
             accept="application/pdf"
             onChange={handleFileChange}
-            required
+            
           />
         </div>
 
@@ -282,7 +282,7 @@ export function RegistrarElemento() {
             name="curp"
             accept="application/pdf"
             onChange={handleFileChange}
-            required
+            
           />
         </div>
         
@@ -294,7 +294,7 @@ export function RegistrarElemento() {
             name="hojaInscripcion"
             accept="application/pdf"
             onChange={handleFileChange}
-            required
+            
           />
         </div>
 
