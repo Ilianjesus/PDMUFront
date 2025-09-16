@@ -159,25 +159,6 @@ export function RegistrarElemento() {
           </select>
         </div>
 
-        {/*<div className="form-group">
-          <label className="registrar-label">Grupo:</label>
-          <select
-            className="registrar-select"
-            name="grupo"
-            value={formData.grupo}
-            onChange={handleChange}
-            required
-          >
-            <option value="">Seleccione...</option>
-            <option value="Mayor varonil">Mayor varonil</option>
-            <option value="Mayor femenil">Mayor femenil</option>
-            <option value="Juvenil varonil">Juvenil varonil</option>
-            <option value="Juvenil femenil">Juvenil femenil</option>
-            <option value="Menor varonil">Menor varonil</option>
-            <option value="Menor femenil">Menor femenil</option>
-          </select>
-        </div>*/}
-
         <div className="form-group">
           <label className="registrar-label">Fecha de nacimiento:</label>
           <input
@@ -226,77 +207,98 @@ export function RegistrarElemento() {
           />
         </div>
 
-        <div className="form-group">
-          <label className="registrar-label">Ine Tutor (PDF):</label>
-          <input
-            className="registrar-input"
-            type="file"
-            name="ineTutor"
-            accept="application/pdf"
-            onChange={handleFileChange}
-            
-          />
-        </div>
+        <div className="file-upload">
+  <label className="file-label">Ine Tutor (PDF):</label>
+  <label className="file-custom">
+    <span>Seleccionar archivo</span>
+    <input
+      type="file"
+      name="ineTutor"
+      accept="application/pdf"
+      onChange={handleFileChange}
+    />
+  </label>
+  {files.ineTutor && <p className="file-name">{files.ineTutor.name}</p>}
+</div>
 
-        <div className="form-group">
-          <label className="registrar-label">Certificado Medico (PDF):</label>
-          <input
-            className="registrar-input"
-            type="file"
-            name="certificadoMedico"
-            accept="application/pdf"
-            onChange={handleFileChange}
-            
-          />
-        </div>
+<div className="file-upload">
+  <label className="file-label">Certificado Médico (PDF):</label>
+  <label className="file-custom">
+    <span>Seleccionar archivo</span>
+    <input
+      type="file"
+      name="certificadoMedico"
+      accept="application/pdf"
+      onChange={handleFileChange}
+    />
+  </label>
+  {files.certificadoMedico && (
+    <p className="file-name">{files.certificadoMedico.name}</p>
+  )}
+</div>
 
-        <div className="form-group">
-          <label className="registrar-label">Comprobante de Domicilio (PDF):</label>
-          <input
-            className="registrar-input"
-            type="file"
-            name="comprobanteDomicilio"
-            accept="application/pdf"
-            onChange={handleFileChange}
-            
-          />
-        </div>
+<div className="file-upload">
+  <label className="file-label">Comprobante de Domicilio (PDF):</label>
+  <label className="file-custom">
+    <span>Seleccionar archivo</span>
+    <input
+      type="file"
+      name="comprobanteDomicilio"
+      accept="application/pdf"
+      onChange={handleFileChange}
+    />
+  </label>
+  {files.comprobanteDomicilio && (
+    <p className="file-name">{files.comprobanteDomicilio.name}</p>
+  )}
+</div>
 
-        <div className="form-group">
-          <label className="registrar-label">Acta de Nacimiento (PDF):</label>
-          <input
-            className="registrar-input"
-            type="file"
-            name="actaNacimiento"
-            accept="application/pdf"
-            onChange={handleFileChange}
-            
-          />
-        </div>
+<div className="file-upload">
+  <label className="file-label">Acta de Nacimiento (PDF):</label>
+  <label className="file-custom">
+    <span>Seleccionar archivo</span>
+    <input
+      type="file"
+      name="actaNacimiento"
+      accept="application/pdf"
+      onChange={handleFileChange}
+    />
+  </label>
+  {files.actaNacimiento && (
+    <p className="file-name">{files.actaNacimiento.name}</p>
+  )}
+</div>
 
-        <div className="form-group">
-          <label className="registrar-label">CURP (PDF):</label>
-          <input
-            className="registrar-input"
-            type="file"
-            name="curp"
-            accept="application/pdf"
-            onChange={handleFileChange}
-            
-          />
-        </div>
-        
-        <div className="form-group">
-          <label className="registrar-label">Hoja de Inscripción (PDF):</label>
-          <input
-            className="registrar-input"
-            type="file"
-            name="hojaInscripcion"
-            accept="application/pdf"
-            onChange={handleFileChange}
-            
-          />
-        </div>
+<div className="file-upload">
+  <label className="file-label">CURP (PDF):</label>
+  <label className="file-custom">
+    <span>Seleccionar archivo</span>
+    <input
+      type="file"
+      name="curp"
+      accept="application/pdf"
+      onChange={handleFileChange}
+    />
+  </label>
+  {files.curp && <p className="file-name">{files.curp.name}</p>}
+</div>
+
+<div className="file-upload">
+  <label className="file-label">Hoja de Inscripción (PDF):</label>
+  <label className="file-custom">
+    <span>Seleccionar archivo</span>
+    <input
+      type="file"
+      name="hojaInscripcion"
+      accept="application/pdf"
+      onChange={handleFileChange}
+    />
+  </label>
+  {files.hojaInscripcion && (
+    <p className="file-name">{files.hojaInscripcion.name}</p>
+  )}
+</div>
+
 
         <button className="registrar-button" type="submit">
           Registrar

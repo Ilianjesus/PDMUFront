@@ -259,6 +259,62 @@ body, html {
   width: 100%; /* 🔹 que los inputs usen todo el ancho disponible */
 }
 
-/* Estilos para home */
+/* Contenedor del file */
+.file-upload {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1.2rem;
+  width: 100%;
+}
+
+/* Etiqueta de arriba */
+.file-label {
+  color: white;
+  font-size: 1rem;
+  margin: 0.5rem 0 0.3rem 0.5rem;
+}
+
+/* Botón custom para file */
+.file-custom {
+  display: inline-block;
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
+  background-color: #1B263B; /* un poco más claro que el fondo */
+  color: #FFC107; /* amarillo como el botón */
+  font-weight: bold;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Hover elegante */
+.file-custom:hover {
+  background-color: #FFC107;
+  color: #0D1B2A; /* azul marino */
+}
+
+/* Ocultar input nativo */
+.file-custom input[type="file"] {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+/* Nombre del archivo */
+.file-name {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  color: #E0E0E0; /* gris claro */
+  font-style: italic;
+  word-break: break-all; /* evita que se desborde con nombres largos */
+}
 
 
