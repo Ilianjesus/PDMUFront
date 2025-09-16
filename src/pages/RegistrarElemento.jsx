@@ -153,13 +153,13 @@ export function RegistrarElemento() {
             required
           >
             <option value="">Seleccione...</option>
-            <option value="M">Masculino</option>
-            <option value="F">Femenino</option>
-            <option value="O">Otro</option>
+            <option value="Masculino">Masculino</option>
+            <option value="Femenino">Femenino</option>
+            <option value="Otro">Otro</option>
           </select>
         </div>
 
-        <div className="form-group">
+        {/*<div className="form-group">
           <label className="registrar-label">Grupo:</label>
           <select
             className="registrar-select"
@@ -176,7 +176,7 @@ export function RegistrarElemento() {
             <option value="Menor varonil">Menor varonil</option>
             <option value="Menor femenil">Menor femenil</option>
           </select>
-        </div>
+        </div>*/}
 
         <div className="form-group">
           <label className="registrar-label">Fecha de nacimiento:</label>
