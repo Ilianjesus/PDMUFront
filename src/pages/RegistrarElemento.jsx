@@ -41,22 +41,30 @@ export function RegistrarElemento() {
   const handleSubmit = async (e) => {
     e.preventDefault();
   
+    // ✅ Validación de fecha de nacimiento
+    const hoy = new Date().toISOString().split("T")[0];
+    if (formData.fechaNacimiento > hoy) {
+      alert("La fecha de nacimiento no puede ser futura ❌");
+      return;
+    }
+  
+    // ✅ Validación de teléfono (exactamente 10 dígitos numéricos)
+    if (!/^\d{10}$/.test(formData.telefonoTutor)) {
+      alert("El teléfono debe contener exactamente 10 dígitos numéricos ❌");
+      return;
+    }
+  
     try {
       const data = new FormData();
-  
-      // Agregar los campos de texto
       for (const key in formData) {
         data.append(key, formData[key]);
       }
-  
-      // Agregar los archivos PDF
       for (const key in files) {
         if (files[key]) {
           data.append(key, files[key]);
         }
       }
   
-      // Debug: revisar qué se va a enviar
       console.log("=== FormData ===");
       for (let pair of data.entries()) {
         console.log(pair[0], pair[1]);
@@ -70,7 +78,6 @@ export function RegistrarElemento() {
         }
       );
   
-      // Debug: revisar status
       console.log("Response status:", response.status);
   
       if (response.ok) {
@@ -78,7 +85,6 @@ export function RegistrarElemento() {
         console.log("Respuesta del servidor:", respText);
         alert("Registro enviado correctamente ✅");
   
-        // Resetear formulario
         setFormData({
           nombre: "",
           apellidoPaterno: "",
@@ -90,7 +96,14 @@ export function RegistrarElemento() {
           telefonoTutor: "",
           enfermedades: "",
         });
-        setFiles({ ineTutor: null, certificadoMedico: null, comprobanteDomicilio: null, actaNacimiento: null, curp: null, hojaInscripcion: null });
+        setFiles({
+          ineTutor: null,
+          certificadoMedico: null,
+          comprobanteDomicilio: null,
+          actaNacimiento: null,
+          curp: null,
+          hojaInscripcion: null,
+        });
         e.target.reset();
       } else {
         const errorText = await response.text();
@@ -102,6 +115,7 @@ export function RegistrarElemento() {
       alert("Hubo un problema al conectar con el servidor ❌");
     }
   };
+  
   
 
   return (
@@ -167,8 +181,9 @@ export function RegistrarElemento() {
             name="fechaNacimiento"
             value={formData.fechaNacimiento}
             onChange={handleChange}
+            max={new Date().toISOString().split("T")[0]} // ❌ no permite fechas futuras
             required
-          />
+            />
         </div>
 
         <div className="form-group">
@@ -190,8 +205,13 @@ export function RegistrarElemento() {
             type="tel"
             name="telefonoTutor"
             value={formData.telefonoTutor}
-            onChange={handleChange}
-            placeholder="Ej. 555-123-4567"
+            onChange={(e) => {
+              // Solo números y máximo 10 dígitos
+              const value = e.target.value.replace(/\D/g, "").slice(0, 10);
+              setFormData({ ...formData, telefonoTutor: value });
+            }}
+            pattern="[0-9]{10}" // valida que tenga 10 dígitos
+            placeholder="Ej. 5512345678"
             required
           />
         </div>
