@@ -70,6 +70,13 @@ body, html {
     margin-bottom: 1.5rem;
     border: 3px solid #FFC107; /* amarillo mango */
   }
+  
+  .login-form {
+    display: flex;
+    flex-direction: column; /* elementos en columna */
+    align-items: center;    /* centra horizontalmente */
+    width: 100%;
+  }
  
   /* Estilos para Layout y navegación */
   .app-container {
