@@ -16,6 +16,11 @@ export function Home() {
             <blockquote style={{ marginTop: "20px", fontStyle: "italic" }}>
                 {puntoAleatorio}
             </blockquote>
+
+            <p style={{ marginTop: "20px", fontWeight: "bold", color: "white", fontSize: "48px" }}>
+                PAGINA EN DESARROLLO
+            </p>
+
             
         </div>
     );
