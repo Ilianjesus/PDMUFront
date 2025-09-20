@@ -1,11 +1,9 @@
-// src/contexts/AuthContext.jsx
 import { createContext, useContext, useEffect, useState } from "react";
 import { auth } from "../firebase";
-import {
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-} from "firebase/auth";
+import { setPersistence, browserSessionPersistence } from "firebase/auth";
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
+
+setPersistence(auth, browserSessionPersistence);
 
 const AuthContext = createContext();
 
@@ -15,29 +13,33 @@ export function useAuth() {
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Mientras Firebase verifica
 
-  function login(email, password) {
-    return signInWithEmailAndPassword(auth, email, password);
+  async function login(email, password) {
+    const result = await signInWithEmailAndPassword(auth, email, password);
+    localStorage.setItem("isLoggedIn", "true"); // Guardamos flag
+    return result;
   }
 
-  function logout() {
-    return signOut(auth);
+  async function logout() {
+    await signOut(auth);
+    localStorage.removeItem("isLoggedIn");
+    setUser(null);
   }
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       setLoading(false);
     });
-    return unsub;
+    return unsubscribe;
   }, []);
 
   const value = { user, login, logout, loading };
+
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }
-

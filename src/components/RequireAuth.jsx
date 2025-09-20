@@ -5,13 +5,17 @@ export function RequireAuth({ children }) {
   const { user, loading } = useAuth();
 
   if (loading) {
-    // Aquí puedes devolver un loader o nada mientras se verifica
-    return <div>Cargando...</div>;
+    return (
+      <div style={{ display: "flex", justifyContent: "center", marginTop: "20%" }}>
+        <p>Cargando...</p>
+      </div>
+    );
   }
 
+  // Revisar si hay usuario activo y el flag en localStorage
   if (!user) {
     return <Navigate to="/login" replace />;
-  }
+  }  
 
   return children;
 }
