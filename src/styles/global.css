@@ -326,4 +326,8 @@ body, html {
   word-break: break-all; /* evita que se desborde con nombres largos */
 }
 
-
+.registrar-input::placeholder,
+.registrar-textarea::placeholder {
+  color: #A0AEC0; /* gris claro */
+  opacity: 1;
+}
