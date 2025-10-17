@@ -1,3 +1,4 @@
+// src/components/Navigation.jsx
 import { Link } from "react-router-dom";
 
 export function Navigation() {

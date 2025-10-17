@@ -7,7 +7,7 @@ import { Scanner } from "./components/Scanner";
 import { RegistrarElemento } from "./pages/RegistrarElemento";
 import { Estadisticas } from "./pages/Estadisticas";
 import { Layout } from "./components/Layout";
-import { RegistrarPago } from "./pages/RegistrarPago";
+import RegistrarPago  from "./pages/RegistrarPago";
 import { AuthProvider } from "./contexts/AuthContext";
 import { RequireAuth } from "./components/RequireAuth";
 
@@ -53,7 +53,7 @@ function App() {
                 }
               />
             </Route>
-  
+ 
             <Route path="/Scanner" element={<Scanner />} />
             <Route path="/RegistrarPago" element={<RegistrarPago />} />
           </Routes>
