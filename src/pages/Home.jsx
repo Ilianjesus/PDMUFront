@@ -1,13 +1,19 @@
 import { useEffect, useState } from "react";
-import { puntos } from "../data/Puntos"; // Ajusta el path según tu estructura
+import { puntos } from "../data/Puntos";
+import { useNavigate } from "react-router-dom";
 
 export function Home() {
+    const navigate = useNavigate();
     const [puntoAleatorio, setPuntoAleatorio] = useState("");
 
     useEffect(() => {
         const index = Math.floor(Math.random() * puntos.length);
         setPuntoAleatorio(puntos[index]);
     }, []);
+
+    const irARegistrarPago = () => {
+        navigate("/RegistrarPago");
+    };
 
     return (
         <div className="home-container">
@@ -21,6 +27,9 @@ export function Home() {
                 PAGINA EN DESARROLLO
             </p>
 
+            <button onClick={irARegistrarPago}>
+                Registrar pago
+            </button>
             
         </div>
     );
