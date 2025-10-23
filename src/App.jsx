@@ -10,6 +10,10 @@ import { Layout } from "./components/Layout";
 import RegistrarPago  from "./pages/RegistrarPago";
 import { AuthProvider } from "./contexts/AuthContext";
 import { RequireAuth } from "./components/RequireAuth";
+import PanelAdmin from "./components/PanelAdmin";
+import ModuloInfo from "./components/ModuloInfo";
+import ModuloPagos from "./components/ModuloPagos";
+import ModuloAsistencias from "./components/ModuloAsistencias";
 
 function App() {
     return (
@@ -56,6 +60,10 @@ function App() {
  
             <Route path="/Scanner" element={<Scanner />} />
             <Route path="/RegistrarPago" element={<RegistrarPago />} />
+            <Route path="/PanelAdmin" element={<PanelAdmin />} />
+            <Route path="/ModuloInfo" element={<ModuloInfo />} />
+            <Route path="/ModuloPagos" element={<ModuloPagos />} />
+            <Route path="/ModuloAsistencias" element={<ModuloAsistencias />} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>

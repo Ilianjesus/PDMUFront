@@ -30,6 +30,8 @@ export function Home() {
             <button onClick={irARegistrarPago}>
                 Registrar pago
             </button>
+
+            <button onClick={() => navigate("/PanelAdmin")}> Go Admin Panel </button>
             
         </div>
     );
