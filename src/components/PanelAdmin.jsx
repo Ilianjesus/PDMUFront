@@ -3,6 +3,7 @@ import axios from "axios";
 import Buscador from "../components/Buscador";
 import ModuloInfo from "../components/ModuloInfo";
 import ModuloPagos from "../components/ModuloPagos";
+import ModuloAsistencias from "../components/ModuloAsistencias";
 
 const PanelAdmin = () => {
   const [seleccionado, setSeleccionado] = useState(null);
@@ -17,7 +18,11 @@ const PanelAdmin = () => {
   };
 
   const handleCargarModulo = async (moduloSeleccionado) => {
-    if (!seleccionado?.ID) return alert("Selecciona un elemento primero");
+    if (!seleccionado?.ID) {
+      alert("Selecciona un elemento primero");
+      return;
+    }
+
     setModulo(moduloSeleccionado);
     setCargando(true);
 
@@ -28,17 +33,40 @@ const PanelAdmin = () => {
         operacion: "leer",
         ID: seleccionado.ID,
       };
+
       const res = await axios.post(url, payload);
-      setData(res.data[0]);
+      console.log("📡 Respuesta completa del webhook:", res);
+      console.log("📡 Respuesta data:", res.data);
+
+      let responseData = null;
+
+      // 🔹 Manejo flexible de la respuesta
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        // Si es array, tomamos el primer elemento
+        responseData = res.data[0].json ? res.data[0].json : res.data[0];
+      } else if (res.data && res.data.json) {
+        // Si es objeto con { json: ... } estilo n8n
+        responseData = res.data.json;
+      } else if (res.data && typeof res.data === "object") {
+        // Si es objeto plano
+        responseData = res.data;
+      }
+
+      if (!responseData || Object.keys(responseData).length === 0) {
+        alert("❌ No se encontraron datos para este módulo");
+        setData(null);
+      } else {
+        setData(responseData);
+      }
     } catch (error) {
       console.error("Error al obtener datos:", error);
       alert("❌ No se pudieron cargar los datos");
+      setData(null);
     } finally {
       setCargando(false);
     }
   };
 
-  // ✅ Muestra el mensaje devuelto por el workflow antes de resetear el estado
   const handleOperacion = async (tipo, payload) => {
     try {
       const url = import.meta.env.VITE_N8N_WEBHOOK_ADMIN;
@@ -50,14 +78,12 @@ const PanelAdmin = () => {
 
       const res = await axios.post(url, body);
 
-      // Mostrar mensaje del workflow (res.data.message)
       if (res.data?.message) {
         alert(`✅ ${res.data.message}`);
       } else {
         alert(`✅ Operación ${tipo} realizada con éxito`);
       }
 
-      // 🔄 Regresar al estado inicial después de mostrar el mensaje
       setSeleccionado(null);
       setModulo("");
       setData(null);
@@ -71,7 +97,6 @@ const PanelAdmin = () => {
     <div style={{ padding: "20px" }}>
       <h2>Panel de Administración</h2>
 
-      {/* 1️⃣ BUSCADOR */}
       {!seleccionado && (
         <Buscador
           placeholder="Buscar por nombre o ID"
@@ -85,32 +110,19 @@ const PanelAdmin = () => {
             <strong>Seleccionado:</strong> {seleccionado.Nombre} ({seleccionado.ID})
           </p>
 
-          {/* 2️⃣ SELECCIÓN DE MÓDULO */}
           <div>
-            <button onClick={() => handleCargarModulo("Informacion")}>
-              🧍 Información
-            </button>
-            <button onClick={() => handleCargarModulo("Pagos")}>
-              💰 Pagos
-            </button>
-            <button onClick={() => handleCargarModulo("Asistencias")}>
-              📅 Asistencias
-            </button>
+            <button onClick={() => handleCargarModulo("Informacion")}>🧍 Información</button>
+            <button onClick={() => handleCargarModulo("Pagos")}>💰 Pagos</button>
+            <button onClick={() => handleCargarModulo("Asistencias")}>📅 Asistencias</button>
           </div>
         </div>
       )}
 
-      {/* 3️⃣ MÓDULO CARGADO */}
       {cargando && <p>Cargando datos...</p>}
 
-      {data && modulo === "Informacion" && (
-        <ModuloInfo data={data} onOperacion={handleOperacion} />
-      )}
-
-      {data && modulo === "Pagos" && (
-        <ModuloPagos data={data} onOperacion={handleOperacion} />
-      )}
-
+      {data && modulo === "Informacion" && <ModuloInfo data={data} onOperacion={handleOperacion} />}
+      {data && modulo === "Pagos" && <ModuloPagos data={data} onOperacion={handleOperacion} />}
+      {data && modulo === "Asistencias" && <ModuloAsistencias data={data} onOperacion={handleOperacion} />}
     </div>
   );
 };
