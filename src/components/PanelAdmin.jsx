@@ -2,6 +2,7 @@ import { useState } from "react";
 import axios from "axios";
 import Buscador from "../components/Buscador";
 import ModuloInfo from "../components/ModuloInfo";
+import ModuloPagos from "../components/ModuloPagos";
 
 const PanelAdmin = () => {
   const [seleccionado, setSeleccionado] = useState(null);
@@ -105,6 +106,11 @@ const PanelAdmin = () => {
       {data && modulo === "Informacion" && (
         <ModuloInfo data={data} onOperacion={handleOperacion} />
       )}
+
+      {data && modulo === "Pagos" && (
+        <ModuloPagos data={data} onOperacion={handleOperacion} />
+      )}
+
     </div>
   );
 };
