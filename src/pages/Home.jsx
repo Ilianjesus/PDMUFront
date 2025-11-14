@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { puntos } from "../data/Puntos";
 import { useNavigate } from "react-router-dom";
+import "../styles/Home.css";
 
 export function Home() {
     const navigate = useNavigate();
@@ -17,22 +18,27 @@ export function Home() {
 
     return (
         <div className="home-container">
-            <h2>Home</h2>
-            <p>Bienvenido</p>
-            <blockquote style={{ marginTop: "20px", fontStyle: "italic" }}>
-                {puntoAleatorio}
-            </blockquote>
+            <h2 className="home-title">Home</h2>
+            <p className="home-welcome">Bienvenido</p>
 
-            <p style={{ marginTop: "20px", fontWeight: "bold", color: "white", fontSize: "48px" }}>
-                PAGINA EN DESARROLLO
-            </p>
+            <div className="punto-box">
+                <blockquote>{puntoAleatorio}</blockquote>
+            </div>
 
-            <button onClick={irARegistrarPago}>
-                Registrar pago
+            <p className="dev-text">PÁGINA EN DESARROLLO</p>
+
+            {/* FAB Registrar Pago */}
+            <button className="fab fab-primary" onClick={irARegistrarPago}>
+                +
             </button>
 
-            <button onClick={() => navigate("/PanelAdmin")}> Go Admin Panel </button>
-            
+            {/* FAB Admin */}
+            <button
+                className="fab fab-secondary"
+                onClick={() => navigate("/PanelAdmin")}
+            >
+                ⚙
+            </button>
         </div>
     );
 }

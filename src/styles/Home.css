@@ -1,0 +1,98 @@
+/* CONTENEDOR PRINCIPAL */
+.home-container {
+    min-height: 100vh;
+    background-color: #0D1B2A; /* igual que global.css */
+    padding: 2rem 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-sizing: border-box;
+  }
+  
+  /* TITULOS */
+  .home-title {
+    color: white;
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    text-align: center;
+  }
+  
+  .home-welcome {
+    color: #ffffffcc;
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  /* CAJA DEL PUNTO ALEATORIO */
+  .punto-box {
+    background-color: #1B263B; /* azul claro usado en otros contenedores */
+    color: white;
+    padding: 1rem 1.2rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    max-width: 400px;
+    width: 100%;
+    text-align: center;
+    margin-bottom: 2rem;
+    font-style: italic;
+  }
+  
+  /* TEXTO DE DESARROLLO */
+  .dev-text {
+    margin-top: 20px;
+    font-weight: bold;
+    color: white;
+    font-size: 2rem;
+    text-align: center;
+    word-break: break-word;
+  }
+  
+  /* FLOATING ACTION BUTTONS (FAB) */
+  .fab {
+    position: fixed;
+    bottom: 80px;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    border: none;
+    font-size: 2rem;
+    font-weight: bold;
+    cursor: pointer;
+    color: #0D1B2A;
+    background-color: #FFC107; /* amarillo mango */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  /* PRIMER BOTÓN (REGISTRAR PAGO) */
+  .fab-primary {
+    right: 20px;
+  }
+  
+  /* SEGUNDO BOTÓN (ADMIN) */
+  .fab-secondary {
+    right: 90px;
+    background-color: #1B263B; 
+    color: white;
+  }
+  
+  /* HOVER */
+  .fab:hover {
+    opacity: 0.9;
+  }
+  
+  /* RESPONSIVE - PANTALLAS PEQUEÑAS */
+  @media (max-width: 400px) {
+    .dev-text {
+      font-size: 1.4rem;
+    }
+  
+    .fab {
+      width: 50px;
+      height: 50px;
+      font-size: 1.6rem;
+    }
+  }
+  
