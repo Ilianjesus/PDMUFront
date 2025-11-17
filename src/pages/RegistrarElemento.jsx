@@ -3,6 +3,8 @@ import "../styles/global.css";
 
 export function RegistrarElemento() {
   const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+
 
   const [formData, setFormData] = useState({
     nombre: "",
@@ -44,32 +46,43 @@ export function RegistrarElemento() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    setLoading(true);
+  
     const hoy = new Date().toISOString().split("T")[0];
     if (formData.fechaNacimiento > hoy) {
       alert("La fecha de nacimiento no puede ser futura ❌");
+      setLoading(false);
       return;
     }
-
+  
     if (!/^\d{10}$/.test(formData.telefonoTutor)) {
       alert("El teléfono debe contener exactamente 10 dígitos numéricos ❌");
+      setLoading(false);
       return;
     }
-
+  
     try {
       const data = new FormData();
       for (const key in formData) data.append(key, formData[key]);
       for (const key in files)
         if (files[key]) data.append(key, files[key]);
-
+  
       const response = await fetch(
         "https://n8n.scolaris.com.mx/webhook-test/799fdd72-8c7c-42bb-9269-01077461fc38",
         { method: "POST", body: data }
       );
-
-      if (response.ok) {
-        alert("Registro enviado correctamente ✅");
-
+  
+      if (!response.ok) {
+        alert("No se pudo completar la inscripción ❌");
+        setLoading(false);
+        return;
+      }
+  
+      const result = await response.json();
+  
+      if (result.status === "exito") {
+        alert("La inscripción se completó correctamente 🎉");
+  
         setFormData({
           nombre: "",
           apellidoPaterno: "",
@@ -81,7 +94,7 @@ export function RegistrarElemento() {
           telefonoTutor: "",
           enfermedades: "",
         });
-
+  
         setFiles({
           ineTutor: null,
           certificadoMedico: null,
@@ -90,18 +103,30 @@ export function RegistrarElemento() {
           curp: null,
           hojaInscripcion: null,
         });
-
+  
         setStep(1);
       } else {
-        alert("Error al enviar el registro ❌");
+        alert("La inscripción no pudo completarse ❌");
       }
+  
     } catch (error) {
-      alert("Error al conectar con el servidor ❌");
+      console.error("Error:", error);
+      alert("Hubo un problema al conectar con el servidor ❌");
     }
-  };
+  
+    setLoading(false);
+  };  
+
 
   return (
     <div className="registrar-container">
+
+      {loading && (
+        <div className="loading-overlay">
+          <div className="spinner"></div>
+        </div>
+      )}
+
       <h2 className="registrar-title">Registrar Elemento</h2>
 
       {/* ============================
@@ -261,11 +286,11 @@ export function RegistrarElemento() {
             ))}
 
             <div style={{ display: "flex", gap: "10px", width: "100%" }}>
-              <button type="button" className="registrar-button" onClick={handleBack}>
+              <button type="button" className="registrar-button" onClick={handleBack} disabled={loading}>
                 Atrás
               </button>
 
-              <button className="registrar-button" type="submit">
+              <button className="registrar-button" type="submit" disabled={loading}>
                 Enviar Registro
               </button>
             </div>
