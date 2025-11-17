@@ -2,6 +2,8 @@ import { useState } from "react";
 import "../styles/global.css";
 
 export function RegistrarElemento() {
+  const [step, setStep] = useState(1);
+
   const [formData, setFormData] = useState({
     nombre: "",
     apellidoPaterno: "",
@@ -37,6 +39,9 @@ export function RegistrarElemento() {
     });
   };
 
+  const handleNext = () => setStep(step + 1);
+  const handleBack = () => setStep(step - 1);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -64,6 +69,7 @@ export function RegistrarElemento() {
 
       if (response.ok) {
         alert("Registro enviado correctamente ✅");
+
         setFormData({
           nombre: "",
           apellidoPaterno: "",
@@ -75,6 +81,7 @@ export function RegistrarElemento() {
           telefonoTutor: "",
           enfermedades: "",
         });
+
         setFiles({
           ineTutor: null,
           certificadoMedico: null,
@@ -83,204 +90,188 @@ export function RegistrarElemento() {
           curp: null,
           hojaInscripcion: null,
         });
-        e.target.reset();
+
+        setStep(1);
       } else {
         alert("Error al enviar el registro ❌");
       }
     } catch (error) {
-      console.error("Error:", error);
-      alert("Hubo un problema al conectar con el servidor ❌");
+      alert("Error al conectar con el servidor ❌");
     }
   };
 
   return (
     <div className="registrar-container">
       <h2 className="registrar-title">Registrar Elemento</h2>
+
+      {/* ============================
+            INDICADOR DE PASOS
+      ============================= */}
+      <div style={{ display: "flex", gap: "10px", marginBottom: "1rem" }}>
+        <div className={`step-indicator ${step === 1 ? "active" : ""}`}>1</div>
+        <div className={`step-indicator ${step === 2 ? "active" : ""}`}>2</div>
+        <div className={`step-indicator ${step === 3 ? "active" : ""}`}>3</div>
+      </div>
+
       <form className="registrar-form" onSubmit={handleSubmit}>
 
-        <input
-          className="registrar-input"
-          type="text"
-          name="nombre"
-          placeholder="Nombre(s)"
-          value={formData.nombre}
-          onChange={handleChange}
-          required
-        />
-
-        <input
-          className="registrar-input"
-          type="text"
-          name="apellidoPaterno"
-          placeholder="Apellido paterno"
-          value={formData.apellidoPaterno}
-          onChange={handleChange}
-          required
-        />
-
-        <input
-          className="registrar-input"
-          type="text"
-          name="apellidoMaterno"
-          placeholder="Apellido materno"
-          value={formData.apellidoMaterno}
-          onChange={handleChange}
-        />
-
-        <select
-          className="registrar-select"
-          name="sexo"
-          value={formData.sexo}
-          onChange={handleChange}
-          required
-        >
-          <option value="">Sexo</option>
-          <option value="Masculino">Masculino</option>
-          <option value="Femenino">Femenino</option>
-          <option value="Otro">Otro</option>
-        </select>
-
-        <div className="form-group">
-          <label className="registrar-label">Fecha de nacimiento:</label>
-          <input
-            className="registrar-input"
-            type="date"
-            name="fechaNacimiento"
-            value={formData.fechaNacimiento}
-            onChange={handleChange}
-            max={new Date().toISOString().split("T")[0]} // ❌ no permite fechas futuras
-            required
-            />
-        </div>
-
-        <input
-          className="registrar-input"
-          type="text"
-          name="tutor"
-          placeholder="Nombre del tutor"
-          value={formData.tutor}
-          onChange={handleChange}
-          required
-        />
-
-        <input
-          className="registrar-input"
-          type="tel"
-          name="telefonoTutor"
-          placeholder="Teléfono del tutor (10 dígitos)"
-          value={formData.telefonoTutor}
-          onChange={(e) => {
-            const value = e.target.value.replace(/\D/g, "").slice(0, 10);
-            setFormData({ ...formData, telefonoTutor: value });
-          }}
-          pattern="[0-9]{10}"
-          required
-        />
-
-        <textarea
-          className="registrar-textarea"
-          name="enfermedades"
-          value={formData.enfermedades}
-          onChange={handleChange}
-          placeholder="Enfermedades o condiciones médicas (opcional)"
-        />
-
-        {/* Archivos PDF */}
-        <div className="file-upload">
-          <label className="file-label">INE del Tutor (PDF)</label>
-          <label className="file-custom">
-            <span>Seleccionar archivo</span>
+        {/* ============================
+                STEP 1 - DATOS DEL ELEMENTO
+        ============================= */}
+        {step === 1 && (
+          <>
             <input
-              type="file"
-              name="ineTutor"
-              accept="application/pdf"
-              onChange={handleFileChange}
+              className="registrar-input"
+              type="text"
+              name="nombre"
+              placeholder="Nombre(s)"
+              value={formData.nombre}
+              onChange={handleChange}
+              required
             />
-          </label>
-          {files.ineTutor && <p className="file-name">{files.ineTutor.name}</p>}
-        </div>
 
-        <div className="file-upload">
-          <label className="file-label">Certificado Médico (PDF)</label>
-          <label className="file-custom">
-            <span>Seleccionar archivo</span>
             <input
-              type="file"
-              name="certificadoMedico"
-              accept="application/pdf"
-              onChange={handleFileChange}
+              className="registrar-input"
+              type="text"
+              name="apellidoPaterno"
+              placeholder="Apellido paterno"
+              value={formData.apellidoPaterno}
+              onChange={handleChange}
+              required
             />
-          </label>
-          {files.certificadoMedico && (
-            <p className="file-name">{files.certificadoMedico.name}</p>
-          )}
-        </div>
 
-        <div className="file-upload">
-          <label className="file-label">Comprobante de Domicilio (PDF)</label>
-          <label className="file-custom">
-            <span>Seleccionar archivo</span>
             <input
-              type="file"
-              name="comprobanteDomicilio"
-              accept="application/pdf"
-              onChange={handleFileChange}
+              className="registrar-input"
+              type="text"
+              name="apellidoMaterno"
+              placeholder="Apellido materno"
+              value={formData.apellidoMaterno}
+              onChange={handleChange}
             />
-          </label>
-          {files.comprobanteDomicilio && (
-            <p className="file-name">{files.comprobanteDomicilio.name}</p>
-          )}
-        </div>
 
-        <div className="file-upload">
-          <label className="file-label">Acta de Nacimiento (PDF)</label>
-          <label className="file-custom">
-            <span>Seleccionar archivo</span>
+            <select
+              className="registrar-select"
+              name="sexo"
+              value={formData.sexo}
+              onChange={handleChange}
+              required
+            >
+              <option value="">Sexo</option>
+              <option value="Masculino">Masculino</option>
+              <option value="Femenino">Femenino</option>
+              <option value="Otro">Otro</option>
+            </select>
+
+            <div className="form-group">
+              <label className="registrar-label">Fecha de nacimiento:</label>
+              <input
+                className="registrar-input"
+                type="date"
+                name="fechaNacimiento"
+                value={formData.fechaNacimiento}
+                onChange={handleChange}
+                max={new Date().toISOString().split("T")[0]}
+                required
+              />
+            </div>
+
+            <button type="button" className="registrar-button" onClick={handleNext}>
+              Siguiente
+            </button>
+          </>
+        )}
+
+        {/* ============================
+                STEP 2 - DATOS DEL TUTOR
+        ============================= */}
+        {step === 2 && (
+          <>
             <input
-              type="file"
-              name="actaNacimiento"
-              accept="application/pdf"
-              onChange={handleFileChange}
+              className="registrar-input"
+              type="text"
+              name="tutor"
+              placeholder="Nombre del tutor"
+              value={formData.tutor}
+              onChange={handleChange}
+              required
             />
-          </label>
-          {files.actaNacimiento && (
-            <p className="file-name">{files.actaNacimiento.name}</p>
-          )}
-        </div>
 
-        <div className="file-upload">
-          <label className="file-label">CURP (PDF)</label>
-          <label className="file-custom">
-            <span>Seleccionar archivo</span>
             <input
-              type="file"
-              name="curp"
-              accept="application/pdf"
-              onChange={handleFileChange}
+              className="registrar-input"
+              type="tel"
+              name="telefonoTutor"
+              placeholder="Teléfono del tutor (10 dígitos)"
+              value={formData.telefonoTutor}
+              onChange={(e) => {
+                const value = e.target.value.replace(/\D/g, "").slice(0, 10);
+                setFormData({ ...formData, telefonoTutor: value });
+              }}
+              pattern="[0-9]{10}"
+              required
             />
-          </label>
-          {files.curp && <p className="file-name">{files.curp.name}</p>}
-        </div>
 
-        <div className="file-upload">
-          <label className="file-label">Hoja de Inscripción (PDF)</label>
-          <label className="file-custom">
-            <span>Seleccionar archivo</span>
-            <input
-              type="file"
-              name="hojaInscripcion"
-              accept="application/pdf"
-              onChange={handleFileChange}
+            <textarea
+              className="registrar-textarea"
+              name="enfermedades"
+              value={formData.enfermedades}
+              onChange={handleChange}
+              placeholder="Enfermedades o condiciones médicas (opcional)"
             />
-          </label>
-          {files.hojaInscripcion && (
-            <p className="file-name">{files.hojaInscripcion.name}</p>
-          )}
-        </div>
 
-        <button className="registrar-button" type="submit">
-          Registrar
-        </button>
+            <div style={{ display: "flex", gap: "10px", width: "100%" }}>
+              <button type="button" className="registrar-button" onClick={handleBack}>
+                Atrás
+              </button>
+
+              <button type="button" className="registrar-button" onClick={handleNext}>
+                Siguiente
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ============================
+                STEP 3 - DOCUMENTOS
+        ============================= */}
+        {step === 3 && (
+          <>
+            {Object.entries({
+              ineTutor: "INE del Tutor",
+              certificadoMedico: "Certificado Médico",
+              comprobanteDomicilio: "Comprobante de Domicilio",
+              actaNacimiento: "Acta de Nacimiento",
+              curp: "CURP",
+              hojaInscripcion: "Hoja de Inscripción",
+            }).map(([key, label]) => (
+              <div className="file-upload" key={key}>
+                <label className="file-label">{label} (PDF)</label>
+
+                <label className="file-custom">
+                  <span>Seleccionar archivo</span>
+                  <input
+                    type="file"
+                    name={key}
+                    accept="application/pdf"
+                    onChange={handleFileChange}
+                  />
+                </label>
+
+                {files[key] && <p className="file-name">{files[key].name}</p>}
+              </div>
+            ))}
+
+            <div style={{ display: "flex", gap: "10px", width: "100%" }}>
+              <button type="button" className="registrar-button" onClick={handleBack}>
+                Atrás
+              </button>
+
+              <button className="registrar-button" type="submit">
+                Enviar Registro
+              </button>
+            </div>
+          </>
+        )}
+
       </form>
     </div>
   );

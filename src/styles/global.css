@@ -331,3 +331,24 @@ body, html {
   color: #A0AEC0; /* gris claro */
   opacity: 1;
 }
+
+.step-indicator {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  background: #1B263B;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  opacity: 0.5;
+  transition: 0.2s;
+}
+
+.step-indicator.active {
+  background: #FFC107;
+  color: #0D1B2A;
+  opacity: 1;
+}
+
