@@ -67,10 +67,18 @@ export function RegistrarElemento() {
       for (const key in files)
         if (files[key]) data.append(key, files[key]);
   
-      const response = await fetch(
-        "https://n8n.scolaris.com.mx/webhook-test/799fdd72-8c7c-42bb-9269-01077461fc38",
-        { method: "POST", body: data }
-      );
+      const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_INSCRIPCION;
+  
+      if (!webhookUrl) {
+        alert("⚠️ Falta la variable VITE_N8N_WEBHOOK_INSCRIPCION en .env");
+        setLoading(false);
+        return;
+      }
+  
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        body: data,
+      });
   
       if (!response.ok) {
         alert("No se pudo completar la inscripción ❌");
@@ -115,8 +123,7 @@ export function RegistrarElemento() {
     }
   
     setLoading(false);
-  };  
-
+  };
 
   return (
     <div className="registrar-container">
