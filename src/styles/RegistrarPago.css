@@ -1,0 +1,106 @@
+/* CONTENEDOR GENERAL */
+.pago-container {
+    min-height: 100vh;
+    padding: 2rem 1rem;
+    background-color: #0D1B2A;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: white;
+  }
+  
+  /* BLOQUE DE CADA PASO */
+  .pago-step {
+    width: 100%;
+    max-width: 420px;
+  }
+  
+  /* TITULO */
+  .pago-title {
+    text-align: center;
+    font-size: 1.8rem;
+    margin-bottom: 1.5rem;
+    color: #FFC107;
+  }
+  
+  /* TARJETA DEL CLIENTE */
+  .pago-cliente-card,
+  .pago-resumen-card {
+    background: #1B263B;
+    padding: 1rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  }
+  
+  /* LISTA DE MESES SCROLL */
+  .pago-meses-lista {
+    background: #1B263B;
+    border-radius: 12px;
+    padding: 0.5rem;
+    max-height: 250px;
+    overflow-y: auto;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  }
+  
+  /* ITEM DE MES */
+  .pago-mes-item {
+    padding: 0.6rem;
+    border-radius: 10px;
+    margin: 0.3rem 0;
+    background: #32425c;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  
+  .pago-mes-item:hover {
+    background: #41587a;
+  }
+  
+  .pago-mes-item.seleccionado {
+    background: #FFC107;
+    color: #0D1B2A;
+    font-weight: bold;
+  }
+  
+  /* SELECT DE PAGO */
+  .pago-select-wrapper {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1rem;
+  }
+  
+  .pago-select {
+    padding: 0.8rem;
+    border-radius: 12px;
+    border: none;
+    margin-top: 0.3rem;
+  }
+  
+  /* BOTONES */
+  .pago-btns {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  
+  .pago-btn {
+    flex: 1;
+    padding: 0.8rem;
+    background: #FFC107;
+    color: #0D1B2A;
+    font-weight: bold;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+  }
+  
+  .pago-btn:disabled {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  
+  .pago-btn:hover {
+    opacity: 0.9;
+  }
+  

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import Buscador from "../components/Buscador";
+import "../styles/RegistrarPago.css";
 
 const mesesTodos = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -27,8 +28,8 @@ const RegistrarPago = () => {
     const fechaActual = new Date();
     const mesActual = fechaActual.getMonth();
     const anioActual = fechaActual.getFullYear();
-    const listaMeses = [];
 
+    const listaMeses = [];
     for (let i = -12; i <= 12; i++) {
       const nuevaFecha = new Date(anioActual, mesActual + i, 1);
       const nombreMes = mesesTodos[nuevaFecha.getMonth()];
@@ -61,7 +62,7 @@ const RegistrarPago = () => {
       alert("⚠️ Falta la variable VITE_N8N_WEBHOOK_PAGOS en .env");
       return;
     }
-
+  
     const payload = {
       ID: cliente.ID,
       Nombre: `${cliente.Nombre} ${cliente.ApellidoPaterno ?? ""} ${cliente.ApellidoMaterno ?? ""}`.trim(),
@@ -69,16 +70,28 @@ const RegistrarPago = () => {
       Cantidad: cantidad,
       TipoPago: tipoPago,
     };
-
+  
     try {
       setEnviando(true);
-      await axios.post(url, payload);
-      alert("Pago registrado ✅");
-      setStep(1);
-      setCliente({ ID: "", Nombre: "" });
-      setMesesSeleccionados([]);
-      setCantidad(0);
-      setTipoPago("Efectivo");
+  
+      // ⬇️ Esperamos respuesta del webhook
+      const respuesta = await axios.post(url, payload);
+      const data = respuesta.data;
+  
+      // ⬇️ Validamos la respuesta JSON del webhook respond
+      if (data?.status === "exito") {
+        alert("Pago registrado correctamente 🎉");
+  
+        // Reset de formulario
+        setStep(1);
+        setCliente({ ID: "", Nombre: "" });
+        setMesesSeleccionados([]);
+        setCantidad(0);
+        setTipoPago("Efectivo");
+      } else {
+        alert("❌ El pago no pudo completarse");
+      }
+  
     } catch (error) {
       console.error(error);
       alert("❌ Error al registrar pago");
@@ -86,27 +99,33 @@ const RegistrarPago = () => {
       setEnviando(false);
     }
   };
+  
 
   return (
-    <div>
-      {/* PASO 1: BUSCAR CLIENTE */}
+    <div className="pago-container">
+
+      {/* Paso 1 */}
       {step === 1 && (
-        <>
-          <h2>Buscar Elemento</h2>
-          <Buscador placeholder="Buscar cliente..." onSeleccionar={handleSeleccionCliente} />
-        </>
+        <div className="pago-step">
+          <h2 className="pago-title">Buscar Elemento</h2>
+          <Buscador
+            placeholder="Buscar cliente..."
+            onSeleccionar={handleSeleccionCliente}
+          />
+        </div>
       )}
 
-      {/* PASO 2: SELECCIONAR MESES */}
+      {/* Paso 2 */}
       {step === 2 && (
-        <>
-          <h2>Seleccionar Meses a Pagar</h2>
-          <div>
+        <div className="pago-step">
+          <h2 className="pago-title">Seleccionar Meses</h2>
+
+          <div className="pago-cliente-card">
             <p><strong>ID:</strong> {cliente.ID}</p>
             <p><strong>Nombre:</strong> {cliente.Nombre} {cliente.ApellidoPaterno ?? ""} {cliente.ApellidoMaterno ?? ""}</p>
           </div>
 
-          <div style={{ border: "1px solid #ccc", maxHeight: "200px", overflowY: "auto" }}>
+          <div className="pago-meses-lista">
             {mesesDisponibles.map((m, i) => {
               const seleccionado = mesesSeleccionados.some(
                 (sel) => sel.nombre === m.nombre && sel.anio === m.anio
@@ -115,11 +134,7 @@ const RegistrarPago = () => {
                 <div
                   key={i}
                   onClick={() => toggleMesSeleccionado(m)}
-                  style={{
-                    padding: "4px",
-                    cursor: "pointer",
-                    background: seleccionado ? "#ddd" : "#fff",
-                  }}
+                  className={`pago-mes-item ${seleccionado ? "seleccionado" : ""}`}
                 >
                   {m.nombre} {m.anio}
                 </div>
@@ -127,38 +142,43 @@ const RegistrarPago = () => {
             })}
           </div>
 
-          <div>
-            <button onClick={() => setStep(1)}>Atrás</button>
-            <button onClick={() => setStep(3)} disabled={mesesSeleccionados.length === 0}>Continuar</button>
+          <div className="pago-btns">
+            <button className="pago-btn" onClick={() => setStep(1)}>Atrás</button>
+            <button className="pago-btn" onClick={() => setStep(3)} disabled={mesesSeleccionados.length === 0}>Continuar</button>
           </div>
-        </>
+        </div>
       )}
 
-      {/* PASO 3: FINALIZAR */}
+      {/* Paso 3 */}
       {step === 3 && (
-        <>
-          <h2>Finalizar Pago</h2>
-          <div>
+        <div className="pago-step">
+          <h2 className="pago-title">Finalizar Pago</h2>
+
+          <div className="pago-resumen-card">
             <p><strong>Cliente:</strong> {cliente.Nombre}</p>
             <p><strong>Meses:</strong> {mesesSeleccionados.map(m => `${m.nombre} ${m.anio}`).join(", ")}</p>
-            <p><strong>Cantidad total:</strong> ${cantidad}</p>
+            <p><strong>Total:</strong> ${cantidad}</p>
           </div>
 
-          <div>
+          <div className="pago-select-wrapper">
             <label>Tipo de pago:</label>
-            <select value={tipoPago} onChange={(e) => setTipoPago(e.target.value)}>
+            <select
+              className="pago-select"
+              value={tipoPago}
+              onChange={(e) => setTipoPago(e.target.value)}
+            >
               <option value="Efectivo">Efectivo</option>
               <option value="Transferencia">Transferencia</option>
             </select>
           </div>
 
-          <div>
-            <button onClick={() => setStep(2)}>Atrás</button>
-            <button onClick={handleFinalizar} disabled={enviando}>
+          <div className="pago-btns">
+            <button className="pago-btn" onClick={() => setStep(2)}>Atrás</button>
+            <button className="pago-btn" onClick={handleFinalizar} disabled={enviando}>
               {enviando ? "Enviando..." : "Finalizar"}
             </button>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
