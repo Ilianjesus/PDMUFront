@@ -134,7 +134,7 @@ export function RegistrarElemento() {
         </div>
       )}
 
-      <h2 className="registrar-title">Registrar Elemento</h2>
+      <h2 className="registrar-title">Formulario de inscripción</h2>
 
       {/* ============================
             INDICADOR DE PASOS
@@ -152,7 +152,11 @@ export function RegistrarElemento() {
         ============================= */}
         {step === 1 && (
           <>
+          <div>
+          <h2 className="registrar-subtitle">Datos del elemento</h2>
+          </div>
             <input
+            
               className="registrar-input"
               type="text"
               name="nombre"
@@ -191,7 +195,6 @@ export function RegistrarElemento() {
               <option value="">Sexo</option>
               <option value="Masculino">Masculino</option>
               <option value="Femenino">Femenino</option>
-              <option value="Otro">Otro</option>
             </select>
 
             <div className="form-group">
@@ -207,6 +210,14 @@ export function RegistrarElemento() {
               />
             </div>
 
+            <textarea
+              className="registrar-textarea"
+              name="enfermedades"
+              value={formData.enfermedades}
+              onChange={handleChange}
+              placeholder="Enfermedades o condiciones médicas (opcional)"
+            />
+
             <button type="button" className="registrar-button" onClick={handleNext}>
               Siguiente
             </button>
@@ -218,6 +229,9 @@ export function RegistrarElemento() {
         ============================= */}
         {step === 2 && (
           <>
+          <div>
+          <h2 className="registrar-subtitle">Datos del tutor</h2>
+          </div>
             <input
               className="registrar-input"
               type="text"
@@ -242,14 +256,6 @@ export function RegistrarElemento() {
               required
             />
 
-            <textarea
-              className="registrar-textarea"
-              name="enfermedades"
-              value={formData.enfermedades}
-              onChange={handleChange}
-              placeholder="Enfermedades o condiciones médicas (opcional)"
-            />
-
             <div style={{ display: "flex", gap: "10px", width: "100%" }}>
               <button type="button" className="registrar-button" onClick={handleBack}>
                 Atrás
@@ -267,13 +273,17 @@ export function RegistrarElemento() {
         ============================= */}
         {step === 3 && (
           <>
+          <div>
+          <h2 className="registrar-subtitle">Documentos</h2>
+          </div>
             {Object.entries({
-              ineTutor: "INE del Tutor",
-              certificadoMedico: "Certificado Médico",
-              comprobanteDomicilio: "Comprobante de Domicilio",
-              actaNacimiento: "Acta de Nacimiento",
-              curp: "CURP",
-              hojaInscripcion: "Hoja de Inscripción",
+              actaNacimiento: "Acta de nacimiento",
+              curp: "CURP del elemento",
+              certificadoMedico: "Certificado médico",
+              hojaInscripcion: "Hoja de inscripción",
+              ineTutor: "INE del tutor",
+              comprobanteDomicilio: "Comprobante de domicilio",
+              
             }).map(([key, label]) => (
               <div className="file-upload" key={key}>
                 <label className="file-label">{label} (PDF)</label>

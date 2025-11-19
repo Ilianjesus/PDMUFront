@@ -19,7 +19,7 @@ export function Layout() {
         </Link>
         <Link to="/RegistrarElemento" className={`tab-item ${location.pathname === "/RegistrarElemento" ? "active" : ""}`}>
           <UserPlus className="icon" />
-          <span>Registro</span>
+          <span>Inscribir</span>
         </Link>
         <Link to="/registrar-asistencia" className={`tab-item ${location.pathname === "/registrar-asistencia" ? "active" : ""}`}>
           <ClipboardList className="icon" />
