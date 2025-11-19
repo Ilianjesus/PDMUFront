@@ -6,6 +6,8 @@ export function Scanner() {
   const [scanResults, setScanResults] = useState([]);
   const [scanning, setScanning] = useState(true);
 
+  const url = import.meta.env.VITE_N8N_WEBHOOK_ASISTENCIA;
+
   useEffect(() => {
     let html5QrCode;
 
@@ -13,18 +15,14 @@ export function Scanner() {
       try {
         html5QrCode = new Html5Qrcode("reader");
 
-        // Intentar abrir siempre la cámara trasera primero
         await html5QrCode.start(
-          { facingMode: "environment" }, // forzar cámara trasera
+          { facingMode: "environment" },
           { fps: 5, qrbox: { width: 250, height: 250 } },
           success,
           error
         );
       } catch (err) {
-        console.warn(
-          "No se pudo abrir la cámara trasera, intentando con la primera disponible...",
-          err
-        );
+        console.warn("No se pudo abrir la cámara trasera, intentando fallback...", err);
 
         try {
           const devices = await Html5Qrcode.getCameras();
@@ -33,7 +31,6 @@ export function Scanner() {
             return;
           }
 
-          // usar la primera cámara como fallback
           await html5QrCode.start(
             { deviceId: { exact: devices[0].id } },
             { fps: 5, qrbox: { width: 250, height: 250 } },
@@ -42,25 +39,19 @@ export function Scanner() {
           );
         } catch (err2) {
           console.error("Error al iniciar el scanner:", err2);
-          alert(
-            "No se pudo acceder a la cámara. Revisa los permisos en tu navegador."
-          );
+          alert("No se pudo acceder a la cámara. Revisa permisos.");
         }
       }
     }
 
-    if (scanning) {
-      initScanner();
-    }
+    if (scanning) initScanner();
 
     return () => {
       if (html5QrCode) {
         html5QrCode
           .stop()
           .then(() => html5QrCode.clear())
-          .catch((err) =>
-            console.error("Error al detener/limpiar scanner:", err)
-          );
+          .catch((err) => console.error("Error al detener scanner:", err));
       }
     };
   }, [scanning]);
@@ -68,24 +59,19 @@ export function Scanner() {
   async function success(result) {
     if (scanResults.find((r) => r.id === result && r.status === "Enviado"))
       return;
-
+  
     setScanning(false);
-
+  
     try {
-      const response = await fetch(
-        "https://n8n.scolaris.com.mx/webhook-test/265eb356-cb2b-48e9-b49b-59540a7fd28f",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ ID: result }),
-        }
-      );
-
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ID: result }),
+      });
+  
       if (!response.ok)
         throw new Error("Error en la solicitud: " + response.statusText);
-
+  
       setScanResults((prev) => [
         ...prev,
         { id: result, status: "Enviado" },
@@ -99,6 +85,7 @@ export function Scanner() {
       alert("Error al registrar el escaneo. Puedes intentar de nuevo.");
     }
   }
+  
 
   function error(err) {
     console.warn(err);
@@ -125,9 +112,7 @@ export function Scanner() {
           <li
             key={idx}
             className={
-              res.status === "Enviado"
-                ? "resultado-exito"
-                : "resultado-error"
+              res.status === "Enviado" ? "resultado-exito" : "resultado-error"
             }
           >
             {res.id} - {res.status}
