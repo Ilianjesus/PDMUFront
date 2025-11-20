@@ -1,0 +1,126 @@
+/* Contenedor general */
+.pagos-container {
+    margin-top: 20px;
+    color: white;
+    font-family: 'Roboto', sans-serif;
+  }
+  
+  /* Título */
+  .pagos-titulo {
+    font-size: 1.6rem;
+    margin-bottom: 10px;
+    text-align: center;
+    color: #FFC107;
+  }
+  
+  /* Info del alumno */
+  .pagos-alumno {
+    background-color: #1B263B;
+    padding: 1rem;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    font-size: 1rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  }
+  
+  /* Grid de cards */
+  .pagos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 16px;
+  }
+  
+  /* Cards */
+  .pago-card {
+    background-color: #1B263B;
+    padding: 1rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    transition: transform 0.2s ease;
+  }
+  
+  .pago-card:hover {
+    transform: scale(1.02);
+  }
+  
+  .pago-ok {
+    border-left: 5px solid #4CAF50;
+  }
+  
+  .pago-pendiente {
+    border-left: 5px solid #FF5252;
+  }
+  
+  /* Encabezado del mes */
+  .pago-mes {
+    font-size: 1.2rem;
+    margin: 0;
+    color: #FFC107;
+  }
+  
+  /* Texto */
+  .pago-cantidad,
+  .pago-estado {
+    font-size: 0.95rem;
+    margin: 0.4rem 0;
+  }
+  
+  .ok {
+    color: #4CAF50;
+  }
+  
+  .pendiente {
+    color: #FF5252;
+  }
+  
+  /* Modo edición */
+  .pago-edit select,
+  .pago-edit input {
+    width: 100%;
+    margin: 0.3rem 0;
+    padding: 0.6rem;
+    border-radius: 10px;
+    border: none;
+    background-color: #0D1B2A;
+    color: white;
+  }
+  
+  .pago-btns {
+    margin-top: 0.6rem;
+    display: flex;
+    gap: 8px;
+  }
+  
+  .btn-editar,
+  .btn-eliminar,
+  .btn-guardar,
+  .btn-cancelar {
+    flex: 1;
+    padding: 0.4rem;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  
+  /* Botones */
+  .btn-editar {
+    background-color: #4CAF50;
+    color: white;
+  }
+  
+  .btn-eliminar {
+    background-color: #FF5252;
+    color: white;
+  }
+  
+  .btn-guardar {
+    background-color: #008CBA;
+    color: white;
+  }
+  
+  .btn-cancelar {
+    background-color: #999;
+    color: white;
+  }
+  

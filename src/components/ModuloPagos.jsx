@@ -1,21 +1,33 @@
 import { useState, useEffect } from "react";
+import "../styles/ModuloPagos.css";
 
 const ModuloPagos = ({ data, onOperacion }) => {
   const [pagos, setPagos] = useState([]);
   const [editIndex, setEditIndex] = useState(null);
   const [editData, setEditData] = useState({});
 
+  const añoActual = new Date().getFullYear();
+
+  const meses = [
+    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+  ];
+
   useEffect(() => {
     if (data?.pagos && Array.isArray(data.pagos)) {
-      const mesesOrden = {
-        Enero: 1, Febrero: 2, Marzo: 3, Abril: 4, Mayo: 5, Junio: 6,
-        Julio: 7, Agosto: 8, Septiembre: 9, Octubre: 10, Noviembre: 11, Diciembre: 12,
-      };
-      const ordenados = [...data.pagos].sort((a, b) => {
-        if (a.Año !== b.Año) return a.Año - b.Año;
-        return mesesOrden[a.Mes] - mesesOrden[b.Mes];
+      const filtrados = data.pagos.filter((p) => p.Año === añoActual);
+
+      const pagosPorMes = meses.map((mes) => {
+        const pagoMes = filtrados.find((p) => p.Mes === mes);
+        return {
+          Mes: mes,
+          Cantidad: pagoMes?.Cantidad || 0,
+          Pagado: !!pagoMes,
+          ...pagoMes,
+        };
       });
-      setPagos(ordenados);
+
+      setPagos(pagosPorMes);
     }
   }, [data]);
 
@@ -34,128 +46,89 @@ const ModuloPagos = ({ data, onOperacion }) => {
       "ID Pago": editData["ID Pago"],
       row_number: editData.row_number,
       Mes: editData.Mes,
-      Año: editData.Año,
+      Año: añoActual,
       Cantidad: editData.Cantidad,
       "Tipo de Pago": editData["Tipo de Pago"],
     });
     setEditIndex(null);
   };
 
-  const handleCancel = () => {
+  const handleCancelar = () => {
     setEditIndex(null);
     setEditData({});
   };
 
-  if (!pagos.length) return <p>No se encontraron pagos registrados.</p>;
-
-  const meses = [
-    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
-  ];
-
   return (
-    <div style={{ marginTop: "20px" }}>
-      <h4>💰 Historial de Pagos</h4>
-      <p>
+    <div className="pagos-container">
+      <h3 className="pagos-titulo">💰 Pagos del Año</h3>
+
+      <p className="pagos-alumno">
         <strong>Alumno:</strong> {data["Nombre Elemento"]} <br />
-        <strong>ID:</strong> {data["ID Elemento"]}
+        <strong>ID:</strong> {data["ID Elemento"]} <br />
+        <strong>Año:</strong> {añoActual}
       </p>
 
-      <table
-        style={{
-          width: "100%",
-          borderCollapse: "collapse",
-          marginTop: "10px",
-          fontSize: "14px",
-        }}
-      >
-        <thead style={{ backgroundColor: "#f2f2f2" }}>
-          <tr>
-            <th style={th}>Mes</th>
-            <th style={th}>Año</th>
-            <th style={th}>Cantidad</th>
-            <th style={th}>Tipo de Pago</th>
-            <th style={th}>Fecha Registro</th>
-            <th style={th}>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {pagos.map((pago, index) => (
-            <tr key={index}>
-              {editIndex === index ? (
-                <>
-                  <td style={td}>
-                    <select
-                      name="Mes"
-                      value={editData.Mes}
-                      onChange={handleChange}
-                    >
-                      {meses.map((m) => (
-                        <option key={m} value={m}>
-                          {m}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td style={td}>
-                    <input
-                      type="number"
-                      name="Año"
-                      value={editData.Año}
-                      onChange={handleChange}
-                      style={{ width: "70px" }}
-                    />
-                  </td>
-                  <td style={td}>
-                    <input
-                      type="number"
-                      name="Cantidad"
-                      value={editData.Cantidad}
-                      onChange={handleChange}
-                      style={{ width: "80px" }}
-                    />
-                  </td>
-                  <td style={td}>
-                    <select
-                      name="Tipo de Pago"
-                      value={editData["Tipo de Pago"]}
-                      onChange={handleChange}
-                    >
-                      <option value="Efectivo">Efectivo</option>
-                      <option value="Transferencia">Transferencia</option>
-                    </select>
-                  </td>
-                  <td style={td}>{editData["Fecha Registro"]}</td>
-                  <td style={td}>
-                    <button
-                      onClick={handleSave}
-                      style={btnGuardar}
-                    >
-                      💾 Guardar
-                    </button>
-                    <button
-                      onClick={handleCancel}
-                      style={btnCancelar}
-                    >
-                      ❌ Cancelar
-                    </button>
-                  </td>
-                </>
-              ) : (
-                <>
-                  <td style={td}>{pago.Mes}</td>
-                  <td style={td}>{pago.Año}</td>
-                  <td style={td}>${pago.Cantidad}</td>
-                  <td style={td}>{pago["Tipo de Pago"]}</td>
-                  <td style={td}>{pago["Fecha Registro"]}</td>
-                  <td style={td}>
-                    <button
-                      onClick={() => handleEdit(index)}
-                      style={btnEditar}
-                    >
+      <div className="pagos-grid">
+        {pagos.map((pago, index) => (
+          <div
+            className={`pago-card ${pago.Pagado ? "pago-ok" : "pago-pendiente"}`}
+            key={index}
+          >
+            {editIndex === index ? (
+              <div className="pago-edit">
+                <select name="Mes" value={editData.Mes} onChange={handleChange}>
+                  {meses.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+
+                <input
+                  type="number"
+                  name="Cantidad"
+                  value={editData.Cantidad}
+                  onChange={handleChange}
+                  placeholder="Cantidad"
+                />
+
+                <select
+                  name="Tipo de Pago"
+                  value={editData["Tipo de Pago"]}
+                  onChange={handleChange}
+                >
+                  <option value="Efectivo">Efectivo</option>
+                  <option value="Transferencia">Transferencia</option>
+                </select>
+
+                <div className="pago-btns">
+                  <button className="btn-guardar" onClick={handleSave}>
+                    💾 Guardar
+                  </button>
+                  <button className="btn-cancelar" onClick={handleCancelar}>
+                    ❌ Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <h4 className="pago-mes">{pago.Mes}</h4>
+                <p className="pago-cantidad">
+                  Cantidad: <strong>${pago.Cantidad}</strong>
+                </p>
+                <p className="pago-estado">
+                  Estado:{" "}
+                  <strong className={pago.Pagado ? "ok" : "pendiente"}>
+                    {pago.Pagado ? "Pagado" : "Por pagar"}
+                  </strong>
+                </p>
+
+                {pago.Pagado && (
+                  <div className="pago-btns">
+                    <button className="btn-editar" onClick={() => handleEdit(index)}>
                       ✏️ Editar
                     </button>
+
                     <button
+                      className="btn-eliminar"
                       onClick={() =>
                         onOperacion("eliminar", {
                           "ID Elemento": data["ID Elemento"],
@@ -163,64 +136,18 @@ const ModuloPagos = ({ data, onOperacion }) => {
                           row_number: pago.row_number,
                         })
                       }
-                      style={btnEliminar}
                     >
                       🗑 Eliminar
                     </button>
-                  </td>
-                </>
-              )}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
-};
-
-// Estilos simples
-const th = {
-  border: "1px solid #ddd",
-  padding: "8px",
-  textAlign: "left",
-};
-const td = {
-  border: "1px solid #ddd",
-  padding: "8px",
-};
-const btnEditar = {
-  backgroundColor: "#4CAF50",
-  color: "white",
-  border: "none",
-  padding: "4px 8px",
-  borderRadius: "4px",
-  cursor: "pointer",
-  marginRight: "5px",
-};
-const btnEliminar = {
-  backgroundColor: "#ff4d4d",
-  color: "white",
-  border: "none",
-  padding: "4px 8px",
-  borderRadius: "4px",
-  cursor: "pointer",
-};
-const btnGuardar = {
-  backgroundColor: "#008CBA",
-  color: "white",
-  border: "none",
-  padding: "4px 8px",
-  borderRadius: "4px",
-  cursor: "pointer",
-  marginRight: "5px",
-};
-const btnCancelar = {
-  backgroundColor: "#999",
-  color: "white",
-  border: "none",
-  padding: "4px 8px",
-  borderRadius: "4px",
-  cursor: "pointer",
 };
 
 export default ModuloPagos;
