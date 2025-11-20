@@ -24,22 +24,20 @@ const RegistrarPago = () => {
       ApellidoPaterno: item.ApellidoPaterno,
       ApellidoMaterno: item.ApellidoMaterno
     });
-
+  
     const fechaActual = new Date();
-    const mesActual = fechaActual.getMonth();
     const anioActual = fechaActual.getFullYear();
-
-    const listaMeses = [];
-    for (let i = -12; i <= 12; i++) {
-      const nuevaFecha = new Date(anioActual, mesActual + i, 1);
-      const nombreMes = mesesTodos[nuevaFecha.getMonth()];
-      const anio = nuevaFecha.getFullYear();
-      listaMeses.push({ nombre: nombreMes, anio });
-    }
-
+  
+    // 🔹 Generar SOLO meses enero-diciembre del año actual
+    const listaMeses = mesesTodos.map((nombreMes, index) => ({
+      nombre: nombreMes,
+      anio: anioActual
+    }));
+  
     setMesesDisponibles(listaMeses);
     setStep(2);
   };
+  
 
   const toggleMesSeleccionado = (mesObj) => {
     const existe = mesesSeleccionados.some(
