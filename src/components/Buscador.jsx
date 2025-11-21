@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
+import "../styles/Buscador.css";
 
 const Buscador = ({ placeholder = "Buscar...", onSeleccionar }) => {
   const [query, setQuery] = useState("");
@@ -7,7 +8,7 @@ const Buscador = ({ placeholder = "Buscar...", onSeleccionar }) => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    let cancelado = false; // <-- flag para cancelar la respuesta tardía
+    let cancelado = false;
 
     const fetchData = async () => {
       const texto = query.trim().toLowerCase();
@@ -18,10 +19,7 @@ const Buscador = ({ placeholder = "Buscar...", onSeleccionar }) => {
       }
 
       const url = import.meta.env.VITE_N8N_WEBHOOK_BUSCAR;
-      if (!url) {
-        console.warn("⚠️ Falta la variable VITE_N8N_WEBHOOK_BUSCAR en .env");
-        return;
-      }
+      if (!url) return;
 
       try {
         setLoading(true);
@@ -35,10 +33,7 @@ const Buscador = ({ placeholder = "Buscar...", onSeleccionar }) => {
           setFiltrados(resultados);
         }
       } catch (error) {
-        if (!cancelado) {
-          console.error("❌ Error al consultar el webhook:", error.message);
-          setFiltrados([]);
-        }
+        if (!cancelado) setFiltrados([]);
       } finally {
         if (!cancelado) setLoading(false);
       }
@@ -46,67 +41,42 @@ const Buscador = ({ placeholder = "Buscar...", onSeleccionar }) => {
 
     fetchData();
 
-    // 🔸 cleanup: se ejecuta si cambia query o se desmonta el componente
     return () => {
       cancelado = true;
     };
   }, [query]);
 
   return (
-    <div style={{ width: "100%", maxWidth: "400px", margin: "0 auto" }}>
+    <div className="buscador-container">
+
       <input
         type="text"
         placeholder={placeholder}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        style={{
-          width: "100%",
-          padding: "10px",
-          borderRadius: "6px",
-          border: "1px solid #ccc",
-        }}
+        className="buscador-input"
       />
 
-      {loading && <p style={{ marginTop: "10px" }}>Cargando resultados...</p>}
+      {loading && <p className="buscador-loading">Cargando resultados...</p>}
 
-      <ul
-        style={{
-          listStyle: "none",
-          padding: 0,
-          marginTop: "10px",
-          borderRadius: "6px",
-          border: filtrados.length ? "1px solid #ddd" : "none",
-          maxHeight: "200px",
-          overflowY: "auto",
-        }}
-      >
-        {filtrados.length > 0 ? (
-          filtrados.map((item, index) => (
+      {filtrados.length > 0 && (
+        <ul className="buscador-lista">
+          {filtrados.map((item, index) => (
             <li
               key={index}
+              className="buscador-item"
               onClick={() => onSeleccionar && onSeleccionar(item)}
-              style={{
-                padding: "8px",
-                cursor: "pointer",
-                borderBottom: "1px solid #eee",
-                transition: "background 0.2s",
-              }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.background = "#f0f0f0")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.background = "transparent")
-              }
             >
-              {item.Nombre} {item.ApellidoPaterno} {item.ApellidoMaterno}{" "}
-              <span style={{ color: "#555" }}>({item.ID})</span>
+              {item.Nombre} {item.ApellidoPaterno} {item.ApellidoMaterno}
+              <span style={{ color: "#A0AEC0" }}> ({item.ID})</span>
             </li>
-          ))
-        ) : (
-          query.length >= 2 &&
-          !loading && <p>No se encontraron resultados</p>
-        )}
-      </ul>
+          ))}
+        </ul>
+      )}
+
+      {query.length >= 2 && !loading && filtrados.length === 0 && (
+        <p className="buscador-noresult">No se encontraron resultados</p>
+      )}
     </div>
   );
 };
