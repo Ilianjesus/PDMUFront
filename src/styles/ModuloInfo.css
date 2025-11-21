@@ -1,0 +1,105 @@
+/* MOBILE FIRST — estilo similar a global.css */
+/* Contenedor principal */
+.modulo-info-container {
+    padding: 1.5rem;
+    background-color: #0D1B2A; /* mismo azul oscuro */
+    color: white;
+    min-height: 100vh;
+  }
+  
+  /* Título */
+  .modulo-info-title {
+    font-size: 1.8rem;
+    margin-bottom: 1.2rem;
+    text-align: center;
+  }
+  
+  /* Formulario */
+  .modulo-info-form {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  /* Grupo de inputs */
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1rem;
+  }
+  
+  /* Labels */
+  .form-group label {
+    font-size: 0.95rem;
+    margin-bottom: 0.3rem;
+    color: #E0E0E0;
+  }
+  
+  /* Inputs generales */
+  .input {
+    padding: 0.8rem 1rem;
+    border-radius: 12px;
+    border: none;
+    background-color: #1B263B;
+    color: white;
+    font-size: 1rem;
+    box-sizing: border-box;
+  }
+  
+  /* Placeholders */
+  .input::placeholder {
+    color: #A0AEC0;
+  }
+  
+  /* Inputs bloqueados */
+  .input-disabled {
+    opacity: 0.6;
+  }
+  
+  /* Botones */
+  .modulo-info-buttons {
+    margin-top: 1.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+  
+  .btn-guardar,
+  .btn-eliminar {
+    padding: 0.9rem;
+    border-radius: 12px;
+    border: none;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    width: 100%;
+  }
+  
+  .btn-guardar {
+    background-color: #FFC107;
+    color: #0D1B2A;
+  }
+  
+  .btn-eliminar {
+    background-color: #FF5252;
+    color: white;
+  }
+  
+  /* Hover */
+  .btn-guardar:hover,
+  .btn-eliminar:hover {
+    opacity: 0.85;
+  }
+  
+  /* RESPONSIVE — Tablets y laptops */
+  @media (min-width: 600px) {
+    .modulo-info-container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+  
+    .modulo-info-title {
+      text-align: left;
+    }
+  }
+  
