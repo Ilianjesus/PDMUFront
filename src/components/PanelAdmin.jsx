@@ -5,6 +5,8 @@ import ModuloInfo from "../components/ModuloInfo";
 import ModuloPagos from "../components/ModuloPagos";
 import ModuloAsistencias from "../components/ModuloAsistencias";
 
+import "../styles/PanelAdmin.css";
+
 const PanelAdmin = () => {
   const [seleccionado, setSeleccionado] = useState(null);
   const [modulo, setModulo] = useState("");
@@ -36,19 +38,14 @@ const PanelAdmin = () => {
 
       const res = await axios.post(url, payload);
       console.log("📡 Respuesta completa del webhook:", res);
-      console.log("📡 Respuesta data:", res.data);
 
       let responseData = null;
 
-      // 🔹 Manejo flexible de la respuesta
       if (Array.isArray(res.data) && res.data.length > 0) {
-        // Si es array, tomamos el primer elemento
         responseData = res.data[0].json ? res.data[0].json : res.data[0];
-      } else if (res.data && res.data.json) {
-        // Si es objeto con { json: ... } estilo n8n
+      } else if (res.data?.json) {
         responseData = res.data.json;
-      } else if (res.data && typeof res.data === "object") {
-        // Si es objeto plano
+      } else if (typeof res.data === "object") {
         responseData = res.data;
       }
 
@@ -78,11 +75,7 @@ const PanelAdmin = () => {
 
       const res = await axios.post(url, body);
 
-      if (res.data?.message) {
-        alert(`✅ ${res.data.message}`);
-      } else {
-        alert(`✅ Operación ${tipo} realizada con éxito`);
-      }
+      alert(`✅ ${res.data?.message || `Operación ${tipo} realizada con éxito`}`);
 
       setSeleccionado(null);
       setModulo("");
@@ -94,8 +87,8 @@ const PanelAdmin = () => {
   };
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h2>Panel de Administración</h2>
+    <div className="panel-container">
+      <h2 className="panel-title">Panel de Administración</h2>
 
       {!seleccionado && (
         <Buscador
@@ -105,24 +98,40 @@ const PanelAdmin = () => {
       )}
 
       {seleccionado && (
-        <div style={{ marginTop: "20px" }}>
-          <p>
+        <div className="panel-card">
+          <p className="panel-selected">
             <strong>Seleccionado:</strong> {seleccionado.Nombre} ({seleccionado.ID})
           </p>
 
-          <div>
-            <button onClick={() => handleCargarModulo("Informacion")}>🧍 Información</button>
-            <button onClick={() => handleCargarModulo("Pagos")}>💰 Pagos</button>
-            <button onClick={() => handleCargarModulo("Asistencias")}>📅 Asistencias</button>
+          <div className="panel-buttons">
+            <button className="panel-btn" onClick={() => handleCargarModulo("Informacion")}>
+              Información Personal
+            </button>
+
+            <button className="panel-btn" onClick={() => handleCargarModulo("Pagos")}>
+              Pagos
+            </button>
+
+            <button className="panel-btn" onClick={() => handleCargarModulo("Asistencias")}>
+              Asistencias
+            </button>
           </div>
         </div>
       )}
 
-      {cargando && <p>Cargando datos...</p>}
+      {cargando && <p className="panel-loading">Cargando datos...</p>}
 
-      {data && modulo === "Informacion" && <ModuloInfo data={data} onOperacion={handleOperacion} />}
-      {data && modulo === "Pagos" && <ModuloPagos data={data} onOperacion={handleOperacion} />}
-      {data && modulo === "Asistencias" && <ModuloAsistencias data={data} onOperacion={handleOperacion} />}
+      {data && modulo === "Informacion" && (
+        <ModuloInfo data={data} onOperacion={handleOperacion} />
+      )}
+
+      {data && modulo === "Pagos" && (
+        <ModuloPagos data={data} onOperacion={handleOperacion} />
+      )}
+
+      {data && modulo === "Asistencias" && (
+        <ModuloAsistencias data={data} onOperacion={handleOperacion} />
+      )}
     </div>
   );
 };

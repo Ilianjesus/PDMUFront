@@ -1,0 +1,81 @@
+/* Contenedor principal */
+.panel-container {
+    min-height: 100vh;
+    background-color: #0D1B2A;
+    padding: 1.5rem;
+    color: white;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  /* Título */
+  .panel-title {
+    color: white;
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+    text-align: center;
+  }
+  
+  /* Tarjeta del usuario seleccionado */
+  .panel-card {
+    background-color: #1B263B;
+    padding: 1rem;
+    width: 100%;
+    max-width: 450px;
+    border-radius: 16px;
+    margin-top: 1rem;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  }
+  
+  /* Texto del seleccionado */
+  .panel-selected {
+    font-size: 1rem;
+    color: #E0E0E0;
+    margin-bottom: 1rem;
+  }
+  
+  /* Botones del módulo */
+  .panel-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+  }
+  
+  .panel-btn {
+    padding: 0.8rem;
+    border-radius: 12px;
+    border: none;
+    background-color: #FFC107;
+    color: #0D1B2A;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    width: 100%;
+    transition: 0.2s ease;
+  }
+  
+  .panel-btn:hover {
+    opacity: 0.85;
+  }
+  
+  /* Estado de carga */
+  .panel-loading {
+    margin-top: 1.5rem;
+    color: #FFC107;
+    font-size: 1.2rem;
+  }
+  
+  /* Responsivo */
+  @media (min-width: 480px) {
+    .panel-buttons {
+      flex-direction: row;
+      justify-content: space-between;
+    }
+  
+    .panel-btn {
+      width: 32%;
+    }
+  }
+  
