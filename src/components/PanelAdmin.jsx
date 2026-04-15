@@ -12,6 +12,21 @@ const PanelAdmin = () => {
   const [modulo, setModulo] = useState("");
   const [data, setData] = useState(null);
   const [cargando, setCargando] = useState(false);
+  const [mensaje, setMensaje] = useState(null);
+
+  const normalizeWebhookResponse = (raw) => {
+    if (Array.isArray(raw) && raw.length > 0) {
+      return raw[0]?.json ?? raw[0];
+    }
+    if (raw?.json) return raw.json;
+    if (typeof raw === "object") return raw;
+    return null;
+  };
+
+  const mostrarMensaje = (texto, tipo = "success") => {
+    setMensaje({ texto, tipo });
+    setTimeout(() => setMensaje(null), 3000);
+  };
 
   const handleSeleccionar = (item) => {
     setSeleccionado(item);
@@ -21,7 +36,7 @@ const PanelAdmin = () => {
 
   const handleCargarModulo = async (moduloSeleccionado) => {
     if (!seleccionado?.ID) {
-      alert("Selecciona un elemento primero");
+      mostrarMensaje("Selecciona un elemento primero", "error");
       return;
     }
 
@@ -37,27 +52,17 @@ const PanelAdmin = () => {
       };
 
       const res = await axios.post(url, payload);
-      console.log("📡 Respuesta completa del webhook:", res);
-
-      let responseData = null;
-
-      if (Array.isArray(res.data) && res.data.length > 0) {
-        responseData = res.data[0].json ? res.data[0].json : res.data[0];
-      } else if (res.data?.json) {
-        responseData = res.data.json;
-      } else if (typeof res.data === "object") {
-        responseData = res.data;
-      }
+      const responseData = normalizeWebhookResponse(res.data);
 
       if (!responseData || Object.keys(responseData).length === 0) {
-        alert("❌ No se encontraron datos para este módulo");
+        mostrarMensaje("No se encontraron datos para este módulo", "error");
         setData(null);
       } else {
         setData(responseData);
       }
     } catch (error) {
-      console.error("Error al obtener datos:", error);
-      alert("❌ No se pudieron cargar los datos");
+      console.error(error);
+      mostrarMensaje("Error al cargar datos", "error");
       setData(null);
     } finally {
       setCargando(false);
@@ -67,6 +72,7 @@ const PanelAdmin = () => {
   const handleOperacion = async (tipo, payload) => {
     try {
       const url = import.meta.env.VITE_N8N_WEBHOOK_ADMIN;
+
       const body = {
         sheet: modulo,
         operacion: tipo,
@@ -75,20 +81,28 @@ const PanelAdmin = () => {
 
       const res = await axios.post(url, body);
 
-      alert(`✅ ${res.data?.message || `Operación ${tipo} realizada con éxito`}`);
+      mostrarMensaje(
+        res.data?.message || `Operación ${tipo} realizada con éxito`
+      );
 
-      setSeleccionado(null);
-      setModulo("");
-      setData(null);
+      // 🔁 REFRESCAR módulo actual automáticamente
+      await handleCargarModulo(modulo);
+
     } catch (error) {
       console.error(error);
-      alert("❌ Error al realizar operación");
+      mostrarMensaje("Error al realizar operación", "error");
     }
   };
 
   return (
     <div className="panel-container">
       <h2 className="panel-title">Panel de Administración</h2>
+
+      {mensaje && (
+        <div className={`panel-message ${mensaje.tipo}`}>
+          {mensaje.texto}
+        </div>
+      )}
 
       {!seleccionado && (
         <Buscador
@@ -100,19 +114,29 @@ const PanelAdmin = () => {
       {seleccionado && (
         <div className="panel-card">
           <p className="panel-selected">
-            <strong>Seleccionado:</strong> {seleccionado.Nombre} ({seleccionado.ID})
+            <strong>Seleccionado:</strong>{" "}
+            {seleccionado.Nombre} ({seleccionado.ID})
           </p>
 
           <div className="panel-buttons">
-            <button className="panel-btn" onClick={() => handleCargarModulo("Informacion")}>
+            <button
+              className="panel-btn"
+              onClick={() => handleCargarModulo("Informacion")}
+            >
               Información Personal
             </button>
 
-            <button className="panel-btn" onClick={() => handleCargarModulo("Pagos")}>
+            <button
+              className="panel-btn"
+              onClick={() => handleCargarModulo("Pagos")}
+            >
               Pagos
             </button>
 
-            <button className="panel-btn" onClick={() => handleCargarModulo("Asistencias")}>
+            <button
+              className="panel-btn"
+              onClick={() => handleCargarModulo("Asistencias")}
+            >
               Asistencias
             </button>
           </div>

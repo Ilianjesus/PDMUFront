@@ -1,64 +1,153 @@
-/* MOBILE FIRST — estilo similar a global.css */
-/* Contenedor principal */
-.modulo-info-container {
+/* =========================================
+   MODULO INFO — PANEL ADMIN
+   ========================================= */
+
+   .modulo-info-container {
     padding: 1.5rem;
-    background-color: #0D1B2A; /* mismo azul oscuro */
+    background-color: #0D1B2A;
     color: white;
-    min-height: 100vh;
   }
   
-  /* Título */
   .modulo-info-title {
     font-size: 1.8rem;
-    margin-bottom: 1.2rem;
-    text-align: center;
+    margin-bottom: 1.5rem;
+    font-weight: 600;
   }
   
-  /* Formulario */
   .modulo-info-form {
     display: flex;
     flex-direction: column;
     width: 100%;
   }
   
-  /* Grupo de inputs */
   .form-group {
     display: flex;
     flex-direction: column;
-    margin-bottom: 1rem;
+    margin-bottom: 1.2rem;
   }
   
-  /* Labels */
   .form-group label {
-    font-size: 0.95rem;
-    margin-bottom: 0.3rem;
-    color: #E0E0E0;
+    font-size: 0.9rem;
+    margin-bottom: 0.4rem;
+    color: #B0BEC5;
+    font-weight: 500;
   }
   
-  /* Inputs generales */
+  /* =========================
+     INPUT WRAPPER
+     ========================= */
+  
+  .input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  
+  /* Base input */
   .input {
+    width: 100%;
     padding: 0.8rem 1rem;
     border-radius: 12px;
-    border: none;
+    border: 1px solid transparent;
     background-color: #1B263B;
     color: white;
     font-size: 1rem;
+    transition: all 0.2s ease;
     box-sizing: border-box;
   }
   
-  /* Placeholders */
+  /* Espacio estándar para icono editar */
+  .input-wrapper .input {
+    padding-right: 2.8rem;
+  }
+  
   .input::placeholder {
-    color: #A0AEC0;
+    color: #7C8A9A;
   }
   
-  /* Inputs bloqueados */
+  /* =========================
+     SELECT CUSTOM
+     ========================= */
+  
+  .custom-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+  }
+  
+  /* Más espacio porque ahora tiene flecha + editar */
+  .select-wrapper .input {
+    padding-right: 4.8rem;
+  }
+  
+  /* Flecha personalizada */
+  .select-arrow {
+    position: absolute;
+    right: 2.4rem;
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+    color: #7C8A9A;
+  }
+  
+  /* =========================
+     ESTADOS
+     ========================= */
+  
+  .input-readonly {
+    opacity: 0.65;
+    cursor: default;
+  }
+  
+  .input-active {
+    opacity: 1;
+    background-color: #243447;
+    border: 1px solid #FFC107;
+  }
+  
+  .input-active:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.25);
+  }
+  
   .input-disabled {
-    opacity: 0.6;
+    opacity: 0.5;
+    cursor: not-allowed;
   }
   
-  /* Botones */
+  /* =========================
+     ICONO EDITAR
+     ========================= */
+  
+  .edit-icon-btn {
+    position: absolute;
+    right: 0.8rem;
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: #7C8A9A;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+  
+  .edit-icon-btn:hover {
+    color: #FFC107;
+    transform: scale(1.05);
+  }
+  
+  .edit-icon-btn svg {
+    pointer-events: none;
+  }
+  
+  /* =========================
+     BOTONES
+     ========================= */
+  
   .modulo-info-buttons {
-    margin-top: 1.8rem;
+    margin-top: 2rem;
     display: flex;
     flex-direction: column;
     gap: 0.8rem;
@@ -70,9 +159,10 @@
     border-radius: 12px;
     border: none;
     font-size: 1rem;
-    font-weight: bold;
+    font-weight: 600;
     cursor: pointer;
     width: 100%;
+    transition: 0.2s ease;
   }
   
   .btn-guardar {
@@ -80,26 +170,227 @@
     color: #0D1B2A;
   }
   
+  .btn-guardar:hover {
+    opacity: 0.9;
+  }
+  
   .btn-eliminar {
-    background-color: #FF5252;
+    background-color: #E53935;
     color: white;
   }
   
-  /* Hover */
-  .btn-guardar:hover,
   .btn-eliminar:hover {
-    opacity: 0.85;
+    opacity: 0.9;
   }
   
-  /* RESPONSIVE — Tablets y laptops */
+  /* =========================
+     RESPONSIVE
+     ========================= */
+  
   @media (min-width: 600px) {
     .modulo-info-container {
-      max-width: 600px;
+      max-width: 650px;
       margin: 0 auto;
     }
-  
-    .modulo-info-title {
-      text-align: left;
-    }
+  }
+
+  .document-section-title {
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+    color: #FFC107;
   }
   
+  .document-group {
+    background: #162435;
+    padding: 1rem;
+    border-radius: 12px;
+  }
+  
+  .document-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .document-link {
+    color: #4FC3F7;
+    text-decoration: none;
+    font-weight: 500;
+  }
+  
+  .document-link:hover {
+    text-decoration: underline;
+  }
+  
+  .document-missing {
+    color: #FF8A80;
+    font-style: italic;
+  }
+  
+  .upload-btn {
+    background: #1B263B;
+    border-radius: 8px;
+    padding: 0.4rem 0.6rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    transition: 0.2s ease;
+  }
+  
+  .upload-btn:hover {
+    background: #243447;
+  }
+
+  .upload-confirm-box {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  
+  .file-name {
+    font-size: 0.85rem;
+    color: #B0BEC5;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  .confirm-upload {
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.3rem 0.6rem;
+    cursor: pointer;
+  }
+  
+  .cancel-upload {
+    background: #757575;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.3rem 0.6rem;
+    cursor: pointer;
+  }
+  
+  .confirm-upload:disabled,
+  .cancel-upload:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* =========================
+   EDICIÓN DE CAMPOS
+   ========================= */
+
+.field-edit-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.field-action-row {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: flex-end;
+}
+
+.field-save-btn,
+.field-cancel-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.field-save-btn {
+  background: #4CAF50;
+  color: white;
+}
+
+.field-save-btn:hover {
+  opacity: 0.9;
+}
+
+.field-cancel-btn {
+  background: #757575;
+  color: white;
+}
+
+.field-cancel-btn:hover {
+  opacity: 0.9;
+}
+
+/* =========================
+   MODAL DE CONFIRMACIÓN
+   ========================= */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  padding: 1rem;
+}
+
+.confirm-modal {
+  width: 100%;
+  max-width: 380px;
+  background: #1B263B;
+  border-radius: 16px;
+  padding: 1.4rem;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 193, 7, 0.2);
+}
+
+.confirm-modal-title {
+  margin: 0 0 0.6rem 0;
+  font-size: 1.1rem;
+  color: #FFC107;
+}
+
+.confirm-modal-text {
+  margin: 0 0 1.2rem 0;
+  color: #E0E0E0;
+  line-height: 1.4;
+}
+
+.confirm-modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.modal-confirm-btn,
+.modal-cancel-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.modal-confirm-btn {
+  background: #FFC107;
+  color: #0D1B2A;
+}
+
+.modal-cancel-btn {
+  background: #415A77;
+  color: white;
+}
+
+.modal-confirm-btn:hover,
+.modal-cancel-btn:hover {
+  opacity: 0.92;
+}
