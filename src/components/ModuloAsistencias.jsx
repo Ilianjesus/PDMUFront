@@ -65,11 +65,13 @@ const ModuloAsistencias = ({ data }) => {
         throw new Error("Respuesta HTTP inválida");
       }
 
-      if (result?.status && result.status !== "success") {
-        throw new Error(result?.message || "No se pudo actualizar la asistencia");
+      if (!result || result.status !== "success") {
+        throw new Error(
+          result?.message || "No se pudo actualizar la asistencia"
+        );
       }
 
-      alert(result?.message || "Asistencia actualizada correctamente");
+      alert(result.message || "Asistencia actualizada correctamente");
     } catch (err) {
       console.error("Error actualizando asistencia:", err);
       alert(
@@ -111,15 +113,17 @@ const ModuloAsistencias = ({ data }) => {
         throw new Error("Respuesta HTTP inválida");
       }
 
-      if (result?.status && result.status !== "success") {
-        throw new Error(result?.message || "No se pudo eliminar la asistencia");
+      if (!result || result.status !== "success") {
+        throw new Error(
+          result?.message || "No se pudo eliminar la asistencia"
+        );
       }
 
       setAsistencias((prev) =>
         prev.filter((item) => item.row_number !== registro.row_number)
       );
 
-      alert(result?.message || "Asistencia eliminada correctamente");
+      alert(result.message || "Asistencia eliminada correctamente");
     } catch (err) {
       console.error("Error eliminando asistencia:", err);
       alert(
