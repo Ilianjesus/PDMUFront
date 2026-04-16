@@ -35,6 +35,16 @@ const PanelAdmin = () => {
     setData(null);
   };
 
+  const getSheetByModulo = (moduloNombre) => {
+    const sheetMap = {
+      Informacion: "elementos",
+      Pagos: "Pagos",
+      Asistencias: "Asistencias",
+    };
+
+    return sheetMap[moduloNombre] || moduloNombre;
+  };
+
   const handleCargarModulo = async (moduloSeleccionado) => {
     if (!seleccionado?.ID) {
       mostrarMensaje("Selecciona un elemento primero", "error");
@@ -46,9 +56,10 @@ const PanelAdmin = () => {
 
     try {
       const url = import.meta.env.VITE_N8N_WEBHOOK_ADMIN;
+      const sheet = getSheetByModulo(moduloSeleccionado);
 
       const payload = {
-        sheet: "elementos",
+        sheet,
         operacion: "leer",
         ID: seleccionado.ID,
       };
@@ -83,9 +94,10 @@ const PanelAdmin = () => {
   const handleOperacion = async (tipo, payload) => {
     try {
       const url = import.meta.env.VITE_N8N_WEBHOOK_ADMIN;
+      const sheet = getSheetByModulo(modulo);
 
       const body = {
-        sheet: "elementos",
+        sheet,
         operacion: tipo,
         datos: payload,
       };
@@ -98,7 +110,9 @@ const PanelAdmin = () => {
       }
 
       if (result?.status && result.status !== "success") {
-        throw new Error(result?.message || `No se pudo realizar la operación ${tipo}`);
+        throw new Error(
+          result?.message || `No se pudo realizar la operación ${tipo}`
+        );
       }
 
       mostrarMensaje(
