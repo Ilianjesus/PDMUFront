@@ -96,3 +96,18 @@
     background-color: #C62828;
     color: white;
   }
+
+  .panel-btn-danger {
+  background-color: #e53935;
+  color: white;
+}
+
+.panel-btn-danger:hover {
+  opacity: 0.9;
+}
+
+.panel-btn:disabled,
+.panel-btn-danger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

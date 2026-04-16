@@ -12,6 +12,7 @@ const PanelAdmin = () => {
   const [modulo, setModulo] = useState("");
   const [data, setData] = useState(null);
   const [cargando, setCargando] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
 
   const normalizeWebhookResponse = (raw) => {
@@ -19,7 +20,7 @@ const PanelAdmin = () => {
       return raw[0]?.json ?? raw[0];
     }
     if (raw?.json) return raw.json;
-    if (typeof raw === "object") return raw;
+    if (typeof raw === "object" && raw !== null) return raw;
     return null;
   };
 
@@ -45,14 +46,19 @@ const PanelAdmin = () => {
 
     try {
       const url = import.meta.env.VITE_N8N_WEBHOOK_ADMIN;
+
       const payload = {
-        sheet: moduloSeleccionado,
+        sheet: "elementos",
         operacion: "leer",
         ID: seleccionado.ID,
       };
 
       const res = await axios.post(url, payload);
       const responseData = normalizeWebhookResponse(res.data);
+
+      if (!res?.status || res.status < 200 || res.status >= 300) {
+        throw new Error("Respuesta HTTP inválida");
+      }
 
       if (!responseData || Object.keys(responseData).length === 0) {
         mostrarMensaje("No se encontraron datos para este módulo", "error");
@@ -62,7 +68,12 @@ const PanelAdmin = () => {
       }
     } catch (error) {
       console.error(error);
-      mostrarMensaje("Error al cargar datos", "error");
+      mostrarMensaje(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Error al cargar datos",
+        "error"
+      );
       setData(null);
     } finally {
       setCargando(false);
@@ -74,23 +85,89 @@ const PanelAdmin = () => {
       const url = import.meta.env.VITE_N8N_WEBHOOK_ADMIN;
 
       const body = {
-        sheet: modulo,
+        sheet: "elementos",
         operacion: tipo,
         datos: payload,
       };
 
       const res = await axios.post(url, body);
+      const result = normalizeWebhookResponse(res.data);
+
+      if (!res?.status || res.status < 200 || res.status >= 300) {
+        throw new Error("Respuesta HTTP inválida");
+      }
+
+      if (result?.status && result.status !== "success") {
+        throw new Error(result?.message || `No se pudo realizar la operación ${tipo}`);
+      }
 
       mostrarMensaje(
-        res.data?.message || `Operación ${tipo} realizada con éxito`
+        result?.message || `Operación ${tipo} realizada con éxito`
       );
 
-      // 🔁 REFRESCAR módulo actual automáticamente
       await handleCargarModulo(modulo);
-
     } catch (error) {
       console.error(error);
-      mostrarMensaje("Error al realizar operación", "error");
+      mostrarMensaje(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Error al realizar operación",
+        "error"
+      );
+    }
+  };
+
+  const handleEliminarElemento = async () => {
+    if (!seleccionado?.ID || eliminando) return;
+
+    const confirmado = window.confirm(
+      `¿Seguro que deseas eliminar a ${seleccionado.Nombre || "este elemento"} (${seleccionado.ID})? Esta acción no se puede deshacer.`
+    );
+
+    if (!confirmado) return;
+
+    try {
+      setEliminando(true);
+
+      const url = import.meta.env.VITE_N8N_WEBHOOK_ADMIN;
+
+      const body = {
+        sheet: "elementos",
+        operacion: "delete",
+        ID: seleccionado.ID,
+      };
+
+      const res = await axios.post(url, body);
+      const result = normalizeWebhookResponse(res.data);
+
+      if (!res?.status || res.status < 200 || res.status >= 300) {
+        throw new Error("Respuesta HTTP inválida");
+      }
+
+      if (!result || result.status !== "success") {
+        throw new Error(
+          result?.message || "No se pudo eliminar el elemento"
+        );
+      }
+
+      mostrarMensaje(
+        result.message || "Elemento eliminado correctamente",
+        "success"
+      );
+
+      setSeleccionado(null);
+      setModulo("");
+      setData(null);
+    } catch (error) {
+      console.error(error);
+      mostrarMensaje(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Error al eliminar el elemento",
+        "error"
+      );
+    } finally {
+      setEliminando(false);
     }
   };
 
@@ -122,6 +199,7 @@ const PanelAdmin = () => {
             <button
               className="panel-btn"
               onClick={() => handleCargarModulo("Informacion")}
+              disabled={cargando || eliminando}
             >
               Información Personal
             </button>
@@ -129,6 +207,7 @@ const PanelAdmin = () => {
             <button
               className="panel-btn"
               onClick={() => handleCargarModulo("Pagos")}
+              disabled={cargando || eliminando}
             >
               Pagos
             </button>
@@ -136,8 +215,17 @@ const PanelAdmin = () => {
             <button
               className="panel-btn"
               onClick={() => handleCargarModulo("Asistencias")}
+              disabled={cargando || eliminando}
             >
               Asistencias
+            </button>
+
+            <button
+              className="panel-btn panel-btn-danger"
+              onClick={handleEliminarElemento}
+              disabled={cargando || eliminando}
+            >
+              {eliminando ? "Eliminando..." : "Eliminar elemento"}
             </button>
           </div>
         </div>
