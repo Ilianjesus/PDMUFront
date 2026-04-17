@@ -27,7 +27,7 @@ const ModuloPagos = ({ data }) => {
     if (data?.pagos && Array.isArray(data.pagos)) {
       const filtrados = data.pagos.filter((p) => p.Año === añoActual);
 
-      const pagosPorMes = meses.map((mes) => {
+      const pagosPorMes = meses.map((mes) => {  
         const pagoMes = filtrados.find((p) => p.Mes === mes);
         return {
           Mes: mes,
