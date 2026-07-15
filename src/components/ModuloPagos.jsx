@@ -1,385 +1,434 @@
-import { useState, useEffect } from "react";
-import axios from "axios";
+import { useEffect, useMemo, useState } from "react";
+import {
+  cancelPayment,
+  getPaymentStatement,
+  registerPayment,
+} from "../services/paymentsService";
+import { ConfirmDialog } from "./ui/ConfirmDialog";
+import { LoadingState } from "./ui/LoadingState";
+import { StatusMessage } from "./ui/StatusMessage";
+import { Info } from "lucide-react";
 import "../styles/ModuloPagos.css";
 
+const EMPTY_DIALOG = {
+  visible: false,
+  payment: null,
+  reason: "",
+};
+
+const EMPTY_FORM = {
+  period: null,
+  method: "cash",
+  reference: "",
+};
+
+const PAYMENT_HELP_TEXT =
+  "Las mensualidades se calculan desde la fecha de inscripción. Los pagos se capturan manualmente cuando se reciben en efectivo o transferencia.";
+
+function formatCurrency(value, currency = "MXN") {
+  return new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency,
+  }).format(Number(value) || 0);
+}
+
+function formatDate(value) {
+  if (!value) return "Sin fecha";
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat("es-MX", {
+    dateStyle: "medium",
+  }).format(date);
+}
+
+function getPeriodLabel(period) {
+  return `${period?.Mes ?? ""} ${period?.year ?? ""}`.trim();
+}
+
+function getPaymentState(month) {
+  if (month.payment || month.status === "paid") {
+    return {
+      key: "paid",
+      label: "Pagado",
+      rowClass: "payment-row--paid",
+    };
+  }
+
+  if (month.status === "future" || month.status === "not_applicable") {
+    return {
+      key: "future",
+      label: "Próximo",
+      rowClass: "payment-row--future",
+    };
+  }
+
+  return {
+    key: "unpaid",
+    label: "No pagado",
+    rowClass: "payment-row--unpaid",
+  };
+}
+
 const ModuloPagos = ({ data }) => {
-  const [pagos, setPagos] = useState([]);
-  const [editIndex, setEditIndex] = useState(null);
-  const [editData, setEditData] = useState({});
-  const [expanded, setExpanded] = useState({});
-  const [dialog, setDialog] = useState({
-    visible: false,
-    tipo: "",
-    index: null,
-    payload: null,
-  });
-  const [savingRow, setSavingRow] = useState(null);
-  const [deletingRow, setDeletingRow] = useState(null);
-
-  const añoActual = new Date().getFullYear();
-
-  const meses = [
-    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
-  ];
+  const [statement, setStatement] = useState(data);
+  const [paymentForm, setPaymentForm] = useState(EMPTY_FORM);
+  const [dialog, setDialog] = useState(EMPTY_DIALOG);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState(null);
 
   useEffect(() => {
-    if (data?.pagos && Array.isArray(data.pagos)) {
-      const filtrados = data.pagos.filter((p) => p.Año === añoActual);
+    setStatement(data);
+    setPaymentForm(EMPTY_FORM);
+    setDialog(EMPTY_DIALOG);
+    setMessage(null);
+  }, [data]);
 
-      const pagosPorMes = meses.map((mes) => {  
-        const pagoMes = filtrados.find((p) => p.Mes === mes);
-        return {
-          Mes: mes,
-          Cantidad: pagoMes?.Cantidad || 0,
-          Pagado: !!pagoMes,
-          ...pagoMes,
-        };
+  const months = useMemo(
+    () => (Array.isArray(statement?.months) ? statement.months : []),
+    [statement]
+  );
+  const summary = statement?.summary ?? {};
+  const elementId = statement?.["ID Elemento"];
+  const elementName = statement?.["Nombre Elemento"] || "Elemento";
+  const selectedPeriod = paymentForm.period;
+
+  const visibleMonths = useMemo(
+    () =>
+      months.filter((month) =>
+        ["paid", "pending", "overdue", "future", "unconfigured"].includes(
+          month.status
+        )
+      ),
+    [months]
+  );
+
+  const refreshStatement = async () => {
+    if (!elementId || !statement?.year) return;
+
+    const result = await getPaymentStatement({
+      elementId,
+      year: statement.year,
+      elementName,
+    });
+
+    if (!result.ok) throw new Error(result.message);
+    setStatement(result.data);
+  };
+
+  const openPaymentForm = (period) => {
+    setMessage(null);
+    setPaymentForm({
+      period,
+      method: "cash",
+      reference: "",
+    });
+  };
+
+  const closePaymentForm = () => {
+    if (busy) return;
+    setPaymentForm(EMPTY_FORM);
+  };
+
+  const handleRegisterPayment = async () => {
+    if (busy || !selectedPeriod) return;
+
+    if (paymentForm.method === "transfer" && !paymentForm.reference.trim()) {
+      setMessage({
+        variant: "error",
+        text: "Captura una referencia para pagos por transferencia.",
       });
-
-      setPagos(pagosPorMes);
-    } else {
-      setPagos([]);
-    }
-  }, [data, añoActual]);
-
-  const mostrarDialogo = (tipo, index, payload = null) => {
-    setDialog({
-      visible: true,
-      tipo,
-      index,
-      payload,
-    });
-  };
-
-  const cerrarDialogo = () => {
-    if (savingRow || deletingRow) return;
-
-    setDialog({
-      visible: false,
-      tipo: "",
-      index: null,
-      payload: null,
-    });
-  };
-
-  const toggleExpand = (index) => {
-    setExpanded((prev) => ({
-      ...prev,
-      [index]: !prev[index],
-    }));
-  };
-
-  const handleEdit = (index) => {
-    if (savingRow || deletingRow) return;
-    setEditIndex(index);
-    setEditData({ ...pagos[index] });
-  };
-
-  const handleChange = (e) => {
-    setEditData({ ...editData, [e.target.name]: e.target.value });
-  };
-
-  const handleConfirmarGuardar = async () => {
-    try {
-      const rowNumber = editData.row_number;
-      setSavingRow(rowNumber);
-
-      const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_ADMIN;
-
-      if (!webhookUrl) {
-        throw new Error("Falta la variable VITE_N8N_WEBHOOK_ADMIN");
-      }
-
-      const payload = {
-        sheet: "Pagos",
-        operacion: "update",
-        ID: data["ID Elemento"],
-        datos: {
-          row_number: editData.row_number,
-          "ID Pago": editData["ID Pago"],
-          Mes: editData.Mes,
-          Año: añoActual,
-          Cantidad: editData.Cantidad,
-          "Tipo de Pago": editData["Tipo de Pago"],
-        },
-      };
-
-      const res = await axios.post(webhookUrl, payload);
-      const result = res?.data;
-
-      if (!res?.status || res.status < 200 || res.status >= 300) {
-        throw new Error("Respuesta HTTP inválida");
-      }
-
-      if (!result || result.status !== "success") {
-        throw new Error(result?.message || "No se pudo actualizar el pago");
-      }
-
-      setPagos((prev) =>
-        prev.map((pago, index) =>
-          index === editIndex
-            ? {
-                ...pago,
-                ...editData,
-                Año: añoActual,
-                Pagado: true,
-              }
-            : pago
-        )
-      );
-
-      setEditIndex(null);
-      setEditData({});
-      cerrarDialogo();
-
-      alert(result.message || "Pago actualizado correctamente");
-    } catch (err) {
-      console.error("Error actualizando pago:", err);
-      alert(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Error al actualizar el pago"
-      );
-    } finally {
-      setSavingRow(null);
-    }
-  };
-
-  const handleConfirmarEliminar = async () => {
-    try {
-      const rowNumber = dialog.payload?.row_number;
-      setDeletingRow(rowNumber);
-
-      const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_ADMIN;
-
-      if (!webhookUrl) {
-        throw new Error("Falta la variable VITE_N8N_WEBHOOK_ADMIN");
-      }
-
-      const payload = {
-        sheet: "Pagos",
-        operacion: "delete",
-        ID: data["ID Elemento"],
-        datos: {
-          row_number: dialog.payload.row_number,
-          "ID Pago": dialog.payload["ID Pago"],
-        },
-      };
-
-      const res = await axios.post(webhookUrl, payload);
-      const result = res?.data;
-
-      if (!res?.status || res.status < 200 || res.status >= 300) {
-        throw new Error("Respuesta HTTP inválida");
-      }
-
-      if (!result || result.status !== "success") {
-        throw new Error(result?.message || "No se pudo eliminar el pago");
-      }
-
-      setPagos((prev) =>
-        prev.map((pago) =>
-          pago.row_number === dialog.payload.row_number
-            ? {
-                Mes: pago.Mes,
-                Cantidad: 0,
-                Pagado: false,
-              }
-            : pago
-        )
-      );
-
-      cerrarDialogo();
-
-      alert(result.message || "Pago eliminado correctamente");
-    } catch (err) {
-      console.error("Error eliminando pago:", err);
-      alert(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Error al eliminar el pago"
-      );
-    } finally {
-      setDeletingRow(null);
-    }
-  };
-
-  const confirmarAccion = async () => {
-    if (dialog.tipo === "eliminar") {
-      await handleConfirmarEliminar();
       return;
     }
 
-    if (dialog.tipo === "guardar") {
-      await handleConfirmarGuardar();
+    try {
+      setBusy(true);
+      setMessage(null);
+
+      const result = await registerPayment({
+        elementId,
+        year: selectedPeriod.year,
+        month: selectedPeriod.month,
+        method: paymentForm.method,
+        reference: paymentForm.reference,
+      });
+
+      if (!result.ok) throw new Error(result.message);
+
+      await refreshStatement();
+      setPaymentForm(EMPTY_FORM);
+      setMessage({
+        variant: "success",
+        text: result.message || "Pago registrado correctamente.",
+      });
+    } catch (error) {
+      console.error("Error registrando pago:", error);
+      setMessage({
+        variant: "error",
+        text: error?.message || "No se pudo registrar el pago.",
+      });
+    } finally {
+      setBusy(false);
     }
   };
 
-  const textoDialogo =
-    dialog.tipo === "eliminar"
-      ? "¿Seguro que deseas eliminar este pago?"
-      : dialog.tipo === "guardar"
-      ? "¿Guardar los cambios en este pago?"
-      : "";
+  const openCancelDialog = (payment) => {
+    setMessage(null);
+    setDialog({
+      visible: true,
+      payment,
+      reason: "",
+    });
+  };
+
+  const closeCancelDialog = () => {
+    if (busy) return;
+    setDialog(EMPTY_DIALOG);
+  };
+
+  const handleCancelPayment = async () => {
+    if (busy || !dialog.payment) return;
+
+    if (!dialog.reason.trim()) {
+      setMessage({
+        variant: "error",
+        text: "Captura el motivo de cancelación.",
+      });
+      return;
+    }
+
+    try {
+      setBusy(true);
+      setMessage(null);
+
+      const result = await cancelPayment({
+        paymentId: dialog.payment["ID Pago"],
+        expectedVersion: dialog.payment.version,
+        reason: dialog.reason,
+      });
+
+      if (!result.ok) throw new Error(result.message);
+
+      await refreshStatement();
+      setDialog(EMPTY_DIALOG);
+      setMessage({
+        variant: "success",
+        text: result.message || "Pago cancelado correctamente.",
+      });
+    } catch (error) {
+      console.error("Error cancelando pago:", error);
+      setMessage({
+        variant: "error",
+        text: error?.message || "No se pudo cancelar el pago.",
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!statement) {
+    return <LoadingState compact label="Cargando estado de cuenta..." />;
+  }
 
   return (
     <div className="pagos-container">
-      <h3 className="pagos-titulo">Pagos del Año</h3>
-
-      <p className="pagos-alumno">
-        <strong>Alumno:</strong> {data["Nombre Elemento"]} <br />
-        <strong>ID:</strong> {data["ID Elemento"]} <br />
-        <strong>Año:</strong> {añoActual}
-      </p>
-
-      <div className="pagos-columna">
-        {pagos.map((pago, index) => {
-          const isSaving = savingRow === pago.row_number;
-          const isDeleting = deletingRow === pago.row_number;
-          const isBusy = isSaving || isDeleting;
-
-          return (
-            <div
-              className={`pago-card ${pago.Pagado ? "pago-ok" : "pago-pendiente"}`}
-              key={pago.row_number ?? index}
+      <div className="module-header payments-module-header">
+        <div>
+          <span>Mensualidades {statement.year}</span>
+          <div className="payments-title-row">
+            <h2 className="pagos-titulo">Estado de cuenta</h2>
+            <span
+              className="info-tooltip"
+              tabIndex={0}
+              aria-label={PAYMENT_HELP_TEXT}
             >
-              <div
-                className={`expand-arrow ${expanded[index] ? "open" : ""}`}
-                onClick={() => !isBusy && toggleExpand(index)}
-              >
-                ▼
-              </div>
-
-              {editIndex === index ? (
-                <div className="pago-edit">
-                  <select
-                    name="Mes"
-                    value={editData.Mes || ""}
-                    onChange={handleChange}
-                    disabled={isBusy}
-                  >
-                    {meses.map((m) => (
-                      <option key={m} value={m}>
-                        {m}
-                      </option>
-                    ))}
-                  </select>
-
-                  <input
-                    type="number"
-                    name="Cantidad"
-                    value={editData.Cantidad ?? ""}
-                    onChange={handleChange}
-                    placeholder="Cantidad"
-                    disabled={isBusy}
-                  />
-
-                  <select
-                    name="Tipo de Pago"
-                    value={editData["Tipo de Pago"] || "Efectivo"}
-                    onChange={handleChange}
-                    disabled={isBusy}
-                  >
-                    <option value="Efectivo">Efectivo</option>
-                    <option value="Transferencia">Transferencia</option>
-                  </select>
-
-                  <div className="pago-btns">
-                    <button
-                      className="btn-guardar"
-                      onClick={() => mostrarDialogo("guardar", editIndex)}
-                      disabled={isBusy}
-                    >
-                      {isSaving ? "Guardando..." : "Guardar"}
-                    </button>
-                    <button
-                      className="btn-cancelar"
-                      onClick={() => {
-                        if (isBusy) return;
-                        setEditIndex(null);
-                        setEditData({});
-                      }}
-                      disabled={isBusy}
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <h4 className="pago-mes">{pago.Mes}</h4>
-
-                  <p className="pago-cantidad">
-                    Cantidad: <strong>${pago.Cantidad}</strong>
-                  </p>
-
-                  <p className="pago-estado">
-                    Estado:{" "}
-                    <strong className={pago.Pagado ? "ok" : "pendiente"}>
-                      {pago.Pagado ? "Pagado" : "Por pagar"}
-                    </strong>
-                  </p>
-
-                  {expanded[index] && pago.Pagado && (
-                    <div className="pago-btns">
-                      <button
-                        className="btn-editar"
-                        onClick={() => handleEdit(index)}
-                        disabled={isBusy}
-                      >
-                        Editar
-                      </button>
-
-                      <button
-                        className="btn-eliminar"
-                        onClick={() =>
-                          mostrarDialogo("eliminar", index, {
-                            "ID Pago": pago["ID Pago"],
-                            row_number: pago.row_number,
-                          })
-                        }
-                        disabled={isBusy}
-                      >
-                        {isDeleting ? "Eliminando..." : "Eliminar"}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {dialog.visible && (
-        <div className="modal-overlay">
-          <div className="modal-box">
-            <p className="modal-text">{textoDialogo}</p>
-
-            <div className="modal-buttons">
-              <button
-                className="modal-cancelar"
-                onClick={cerrarDialogo}
-                disabled={!!savingRow || !!deletingRow}
-              >
-                Cancelar
-              </button>
-              <button
-                className="modal-confirmar"
-                onClick={confirmarAccion}
-                disabled={!!savingRow || !!deletingRow}
-              >
-                {savingRow
-                  ? "Guardando..."
-                  : deletingRow
-                  ? "Eliminando..."
-                  : "Confirmar"}
-              </button>
-            </div>
+              <Info aria-hidden="true" />
+              <span className="info-tooltip__content" role="tooltip">
+                {PAYMENT_HELP_TEXT}
+              </span>
+            </span>
           </div>
         </div>
+      </div>
+
+      <section className="payments-summary" aria-label="Resumen de pagos">
+        <div>
+          <span>Inicio de cobro</span>
+          <strong>{formatDate(statement.billingStartOn)}</strong>
+        </div>
+        <div>
+          <span>Adeudo actual</span>
+          <strong>{formatCurrency(summary.totalDue)}</strong>
+        </div>
+        <div>
+          <span>Vencidas</span>
+          <strong>{summary.overdueCount ?? 0}</strong>
+        </div>
+        <div>
+          <span>Pagadas</span>
+          <strong>{summary.paidCount ?? 0}</strong>
+        </div>
+      </section>
+
+      {message && (
+        <StatusMessage variant={message.variant}>{message.text}</StatusMessage>
       )}
+
+      {selectedPeriod && (
+        <section className="payment-entry-panel" aria-label="Registrar pago">
+          <div>
+            <span>Registrar pago</span>
+            <strong>{getPeriodLabel(selectedPeriod)}</strong>
+            <small>
+              Importe: {formatCurrency(selectedPeriod.amount, selectedPeriod.currency)}
+            </small>
+          </div>
+
+          <label>
+            Método
+            <select
+              value={paymentForm.method}
+              onChange={(event) =>
+                setPaymentForm((current) => ({
+                  ...current,
+                  method: event.target.value,
+                  reference: event.target.value === "cash" ? "" : current.reference,
+                }))
+              }
+              disabled={busy}
+            >
+              <option value="cash">Efectivo</option>
+              <option value="transfer">Transferencia</option>
+            </select>
+          </label>
+
+          <label>
+            Referencia
+            <input
+              type="text"
+              value={paymentForm.reference}
+              onChange={(event) =>
+                setPaymentForm((current) => ({
+                  ...current,
+                  reference: event.target.value,
+                }))
+              }
+              placeholder={
+                paymentForm.method === "transfer"
+                  ? "Folio, cuenta o comprobante"
+                  : "Opcional"
+              }
+              disabled={busy || paymentForm.method === "cash"}
+            />
+          </label>
+
+          <div className="payment-entry-panel__actions">
+            <button
+              type="button"
+              className="btn-cancelar"
+              onClick={closePaymentForm}
+              disabled={busy}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="btn-guardar"
+              onClick={handleRegisterPayment}
+              disabled={busy}
+            >
+              {busy ? "Registrando..." : "Registrar"}
+            </button>
+          </div>
+        </section>
+      )}
+
+      <section className="payments-ledger" aria-label="Mensualidades">
+        <div className="payments-ledger__header">
+          <span>Mensualidad</span>
+          <span>Pago</span>
+          <span>Importe</span>
+          <span>Acción</span>
+        </div>
+
+        {visibleMonths.map((month) => {
+          const paymentState = getPaymentState(month);
+
+          return (
+            <article
+              className={`payment-row ${paymentState.rowClass}`}
+              key={`${month.year}-${month.month}`}
+            >
+              <div className="payment-row__period">
+                <strong>{getPeriodLabel(month)}</strong>
+                {month.latestCancellation && (
+                  <small>Última cancelación registrada</small>
+                )}
+              </div>
+
+              <div>
+                <span className={`payment-status payment-status--${paymentState.key}`}>
+                  {paymentState.label}
+                </span>
+              </div>
+
+              <div className="payment-row__amount">
+                {month.status === "unconfigured"
+                  ? "Sin tarifa"
+                  : formatCurrency(month.amount, month.currency)}
+              </div>
+
+              <div className="payment-row__actions">
+                {month.isPayable && (
+                  <button
+                    type="button"
+                    className="btn-payment-action"
+                    onClick={() => openPaymentForm(month)}
+                    disabled={busy}
+                  >
+                    + Pago
+                  </button>
+                )}
+                {month.payment && (
+                  <button
+                    type="button"
+                    className="btn-eliminar"
+                    onClick={() => openCancelDialog(month.payment)}
+                    disabled={busy}
+                  >
+                    Cancelar
+                  </button>
+                )}
+              </div>
+            </article>
+          );
+        })}
+      </section>
+
+      <ConfirmDialog
+        open={dialog.visible}
+        title="Cancelar pago"
+        message="¿Seguro que deseas cancelar este pago? La mensualidad volverá a quedar pendiente si ya es exigible."
+        confirmLabel="Cancelar pago"
+        destructive
+        busy={busy}
+        onCancel={closeCancelDialog}
+        onConfirm={handleCancelPayment}
+      >
+        <label className="payment-cancel-reason">
+          Motivo de cancelación
+          <textarea
+            value={dialog.reason}
+            onChange={(event) =>
+              setDialog((current) => ({
+                ...current,
+                reason: event.target.value,
+              }))
+            }
+            disabled={busy}
+            rows={3}
+          />
+        </label>
+      </ConfirmDialog>
     </div>
   );
 };

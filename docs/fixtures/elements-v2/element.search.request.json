@@ -1,0 +1,12 @@
+{
+  "contractVersion": "2.0",
+  "action": "element.search",
+  "data": {
+    "query": "prueba",
+    "status": "active",
+    "page": {
+      "limit": 20,
+      "cursor": null
+    }
+  }
+}

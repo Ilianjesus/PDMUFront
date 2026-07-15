@@ -1,21 +1,18 @@
-import { Navigate } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
+import { AuthLoading } from "./AuthLoading";
 
-export function RequireAuth({ children }) {
-  const { user, loading } = useAuth();
+export function RequireAuth() {
+  const { authStatus, session } = useAuth();
+  const location = useLocation();
 
-  if (loading) {
-    return (
-      <div style={{ display: "flex", justifyContent: "center", marginTop: "20%" }}>
-        <p>Cargando...</p>
-      </div>
-    );
+  if (authStatus === "loading") {
+    return <AuthLoading />;
   }
 
-  // Revisar si hay usuario activo y el flag en localStorage
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }  
+  if (authStatus !== "authenticated" || !session) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
 
-  return children;
+  return <Outlet />;
 }

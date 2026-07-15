@@ -1,0 +1,15 @@
+{
+  "ok": false,
+  "requestId": "018f5f86-42b2-7a14-9f29-c78a10264d92",
+  "action": "element.get",
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "No se encontró el elemento solicitado.",
+    "fieldErrors": {},
+    "retryable": false
+  },
+  "meta": {
+    "contractVersion": "2.0",
+    "processedAt": "2026-06-29T18:30:04.000Z"
+  }
+}

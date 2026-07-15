@@ -1,0 +1,12 @@
+{
+  "contractVersion": "2.0",
+  "action": "element.get",
+  "data": {
+    "elementId": "PDMU-SEED-001",
+    "include": [
+      "profile",
+      "documents",
+      "assets"
+    ]
+  }
+}

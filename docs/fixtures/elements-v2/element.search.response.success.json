@@ -1,0 +1,24 @@
+{
+  "ok": true,
+  "requestId": "018f5f86-42b2-7a14-9f29-c78a10264d88",
+  "action": "element.search",
+  "data": {
+    "items": [
+      {
+        "elementId": "PDMU-SEED-001",
+        "displayName": "Elemento Prueba Supabase",
+        "groupCode": "SEED",
+        "status": "active"
+      }
+    ]
+  },
+  "meta": {
+    "contractVersion": "2.0",
+    "processedAt": "2026-06-29T18:30:00.000Z",
+    "pagination": {
+      "limit": 20,
+      "nextCursor": null,
+      "hasMore": false
+    }
+  }
+}

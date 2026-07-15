@@ -1,241 +1,516 @@
-import { useState, useEffect } from "react";
-import axios from "axios";
+import { useEffect, useMemo, useState } from "react";
+import {
+  cancelAttendance,
+  createAttendanceException,
+  getAttendanceStatement,
+} from "../services/attendanceService";
+import { ConfirmDialog } from "./ui/ConfirmDialog";
+import { EmptyState } from "./ui/EmptyState";
+import { StatusMessage } from "./ui/StatusMessage";
+import "../styles/ModuloAsistencias.css";
+
+const EMPTY_DELETE = {
+  record: null,
+  reason: "",
+};
+
+const EMPTY_EXCEPTION = {
+  weekday: "0",
+  startsOn: new Date().toISOString().split("T")[0],
+  endsOn: "",
+  reason: "",
+};
+
+function formatDate(value) {
+  if (!value) return "Sin fecha";
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat("es-MX", { dateStyle: "medium" }).format(date);
+}
+
+function formatTime(value) {
+  return value ? value.slice(0, 5) : "";
+}
+
+function sessionTime(session) {
+  const start = formatTime(session.startsAt);
+  const end = formatTime(session.endsAt);
+  if (start && end) return `${start}-${end}`;
+  return start || "Sin horario";
+}
+
+function recordKey(record, index) {
+  return record?.row_number ?? record?.attendanceId ?? `${record?.FechaHora}-${index}`;
+}
 
 const ModuloAsistencias = ({ data }) => {
-  const [asistencias, setAsistencias] = useState([]);
-  const [savingRow, setSavingRow] = useState(null);
-  const [deletingRow, setDeletingRow] = useState(null);
-
-  const parseFechaHora = (str) => {
-    if (!str) return new Date("");
-    const [fecha, hora] = str.split(" ");
-    if (!fecha || !hora) return new Date("");
-    const [dd, mm, yyyy] = fecha.split("/");
-    return new Date(`${yyyy}-${mm}-${dd}T${hora}`);
-  };
+  const [statement, setStatement] = useState(data);
+  const [pendingDelete, setPendingDelete] = useState(EMPTY_DELETE);
+  const [exceptionForm, setExceptionForm] = useState(EMPTY_EXCEPTION);
+  const [deleting, setDeleting] = useState(false);
+  const [savingException, setSavingException] = useState(false);
+  const [message, setMessage] = useState(null);
 
   useEffect(() => {
-    if (data?.Asistencias && Array.isArray(data.Asistencias)) {
-      const ordenadas = [...data.Asistencias].sort(
-        (a, b) => parseFechaHora(a.FechaHora) - parseFechaHora(b.FechaHora)
-      );
-      setAsistencias(ordenadas);
-    } else {
-      setAsistencias([]);
-    }
+    setStatement(data);
+    setMessage(null);
+    setPendingDelete(EMPTY_DELETE);
+    setExceptionForm(EMPTY_EXCEPTION);
   }, [data]);
 
-  const handleEditarEstado = (index, nuevoEstado) => {
-    const actualizadas = [...asistencias];
-    actualizadas[index] = {
-      ...actualizadas[index],
-      Estado: nuevoEstado,
-    };
-    setAsistencias(actualizadas);
-  };
+  useEffect(() => {
+    // keep filters in sync when the statement data changes
+    setFromFilter(data?.from ?? "");
+    setToFilter(data?.to ?? "");
+  }, [data]);
 
-  const handleGuardarCambios = async (index) => {
-    const registro = asistencias[index];
+  const sessions = useMemo(
+    () => (Array.isArray(statement?.sessions) ? statement.sessions : []),
+    [statement]
+  );
+  const exceptions = Array.isArray(statement?.exceptions) ? statement.exceptions : [];
+  const records = Array.isArray(statement?.records) ? statement.records : [];
+  const summary = statement?.summary ?? {};
 
-    try {
-      setSavingRow(registro.row_number);
+  const [fromFilter, setFromFilter] = useState(statement?.from ?? "");
+  const [toFilter, setToFilter] = useState(statement?.to ?? "");
+  const [typeFilter, setTypeFilter] = useState("all");
 
-      const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_ADMIN;
+  const filteredSessions = useMemo(() => {
+    const from = fromFilter ? new Date(`${fromFilter}T00:00:00`) : null;
+    const to = toFilter ? new Date(`${toFilter}T23:59:59`) : null;
 
-      if (!webhookUrl) {
-        throw new Error("Falta la variable VITE_N8N_WEBHOOK_ADMIN");
-      }
+    return sessions.filter((session) => {
+      const date = session.sessionDate ? new Date(`${session.sessionDate}T00:00:00`) : null;
 
-      const payload = {
-        sheet: "Asistencias",
-        operacion: "update",
-        ID: data["ID Elemento"],
-        datos: {
-          row_number: registro.row_number,
-          Estado: registro.Estado,
-          Tipo: registro.Tipo,
-          FechaHora: registro.FechaHora,
-        },
+      if (from && date && date < from) return false;
+      if (to && date && date > to) return false;
+
+      if (typeFilter === "all") return true;
+
+      // Map our simple filters to session.statementStatus values
+      const mapping = {
+        present: "present",
+        absent: "absent",
+        excused: "excused",
       };
 
-      const res = await axios.post(webhookUrl, payload);
-      const result = res?.data;
+      return session.statementStatus === mapping[typeFilter];
+    });
+  }, [sessions, fromFilter, toFilter, typeFilter]);
 
-      if (!res?.status || res.status < 200 || res.status >= 300) {
-        throw new Error("Respuesta HTTP inválida");
-      }
+  const refreshStatement = async () => {
+    const elementId = statement?.["ID Elemento"];
+    if (!elementId) return;
 
-      if (!result || result.status !== "success") {
-        throw new Error(
-          result?.message || "No se pudo actualizar la asistencia"
-        );
-      }
+    const result = await getAttendanceStatement({
+      elementId,
+      from: statement.from,
+      to: statement.to,
+      elementName: statement["Nombre Elemento"],
+    });
+    if (!result.ok) throw new Error(result.message);
+    setStatement(result.data);
+  };
 
-      alert(result.message || "Asistencia actualizada correctamente");
-    } catch (err) {
-      console.error("Error actualizando asistencia:", err);
-      alert(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Error al actualizar la asistencia"
+  const updateCancelledRecord = (attendanceId, reason) => {
+    setStatement((current) => {
+      if (!current) return current;
+
+      const updateRecord = (record) =>
+        record?.row_number === attendanceId
+          ? {
+              ...record,
+              recordStatus: "cancelled",
+              cancelReason: reason,
+            }
+          : record;
+
+      return {
+        ...current,
+        records: current.records?.map(updateRecord) ?? [],
+        Asistencias: current.Asistencias?.map(updateRecord) ?? [],
+        sessions:
+          current.sessions?.map((session) =>
+            session.attendance?.row_number === attendanceId
+              ? {
+                  ...session,
+                  attendance: updateRecord(session.attendance),
+                }
+              : session
+          ) ?? [],
+      };
+    });
+  };
+
+  const handleEliminar = async () => {
+    if (!pendingDelete.record) return;
+    if (!pendingDelete.reason.trim()) {
+      setMessage({
+        variant: "error",
+        text: "Captura el motivo de cancelación.",
+      });
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      setMessage(null);
+      const result = await cancelAttendance({
+        attendanceId: pendingDelete.record.row_number,
+        expectedVersion: pendingDelete.record.version,
+        reason: pendingDelete.reason,
+      });
+
+      if (!result.ok) throw new Error(result.message);
+
+      updateCancelledRecord(
+        pendingDelete.record.row_number,
+        pendingDelete.reason
       );
+      setPendingDelete(EMPTY_DELETE);
+      setMessage({
+        variant: "success",
+        text: result.message || "Asistencia cancelada correctamente.",
+      });
+    } catch (error) {
+      console.error("Error cancelando asistencia:", error);
+      setMessage({
+        variant: "error",
+        text: error?.message || "Error al cancelar la asistencia.",
+      });
     } finally {
-      setSavingRow(null);
+      setDeleting(false);
     }
   };
 
-  const handleEliminar = async (registro) => {
-    const confirmado = window.confirm("¿Eliminar esta asistencia?");
-    if (!confirmado) return;
+  const handleCreateException = async () => {
+    if (!exceptionForm.reason.trim()) {
+      setMessage({
+        variant: "error",
+        text: "Captura el motivo de la exención.",
+      });
+      return;
+    }
 
     try {
-      setDeletingRow(registro.row_number);
+      setSavingException(true);
+      setMessage(null);
+      const result = await createAttendanceException({
+        elementId: statement?.["ID Elemento"],
+        scope: "weekday",
+        weekday: Number(exceptionForm.weekday),
+        startsOn: exceptionForm.startsOn,
+        endsOn: exceptionForm.endsOn || null,
+        reason: exceptionForm.reason,
+      });
 
-      const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_ADMIN;
+      if (!result.ok) throw new Error(result.message);
 
-      if (!webhookUrl) {
-        throw new Error("Falta la variable VITE_N8N_WEBHOOK_ADMIN");
-      }
-
-      const payload = {
-        sheet: "Asistencias",
-        operacion: "delete",
-        ID: data["ID Elemento"],
-        datos: {
-          row_number: registro.row_number,
-        },
-      };
-
-      const res = await axios.post(webhookUrl, payload);
-      const result = res?.data;
-
-      if (!res?.status || res.status < 200 || res.status >= 300) {
-        throw new Error("Respuesta HTTP inválida");
-      }
-
-      if (!result || result.status !== "success") {
-        throw new Error(
-          result?.message || "No se pudo eliminar la asistencia"
-        );
-      }
-
-      setAsistencias((prev) =>
-        prev.filter((item) => item.row_number !== registro.row_number)
-      );
-
-      alert(result.message || "Asistencia eliminada correctamente");
-    } catch (err) {
-      console.error("Error eliminando asistencia:", err);
-      alert(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Error al eliminar la asistencia"
-      );
+      await refreshStatement();
+      setExceptionForm(EMPTY_EXCEPTION);
+      setMessage({
+        variant: "success",
+        text: result.message || "Exención registrada correctamente.",
+      });
+    } catch (error) {
+      console.error("Error creando exención:", error);
+      setMessage({
+        variant: "error",
+        text: error?.message || "No se pudo registrar la exención.",
+      });
     } finally {
-      setDeletingRow(null);
+      setSavingException(false);
     }
   };
 
-  if (!asistencias.length) {
+  const renderSessionList = (items, emptyText) => {
+    if (items.length === 0) {
+      return <p className="attendance-empty-line">{emptyText}</p>;
+    }
+
     return (
-      <div style={{ marginTop: "20px" }}>
-        <h4>📅 Historial de Asistencias</h4>
-        <p>No se encontraron asistencias registradas.</p>
+      <div className="attendance-session-list">
+        {items.map((session) => (
+          <article
+            className={`attendance-session-row attendance-session-row--${session.statementStatus}`}
+            key={session.sessionId}
+          >
+            <div>
+              <strong>{session.activityName}</strong>
+              <span>
+                {formatDate(session.sessionDate)} · {sessionTime(session)}
+                {session.location ? ` · ${session.location}` : ""}
+              </span>
+            </div>
+            <span className={`attendance-badge attendance-badge--${session.statementStatus}`}>
+              {session.statementStatusLabel}
+            </span>
+            <div className="attendance-session-row__meta">
+              <span>{session.categoryLabel}</span>
+              {session.attendance?.source && <span>{session.attendance.Tipo}</span>}
+            </div>
+            <div className="attendance-actions">
+              {session.attendance && session.attendance.recordStatus !== "cancelled" && (
+                <button
+                  type="button"
+                  className="attendance-delete"
+                  onClick={() =>
+                    setPendingDelete({
+                      record: session.attendance,
+                      reason: "",
+                    })
+                  }
+                >
+                  Cancelar
+                </button>
+              )}
+            </div>
+          </article>
+        ))}
       </div>
     );
-  }
+  };
 
   return (
-    <div style={{ marginTop: "20px" }}>
-      <h4>📅 Historial de Asistencias</h4>
-      <p>
-        <strong>Alumno:</strong> {data["Nombre Elemento"]} <br />
-        <strong>ID:</strong> {data["ID Elemento"]}
-      </p>
+    <section className="attendance-module" aria-labelledby="attendance-history-title">
+      <div className="module-header attendance-module-header">
+        <div>
+          <span>Control de asistencia</span>
+          <h2 id="attendance-history-title">Estado de asistencia</h2>
+        </div>
+        <div className="attendance-header-controls">
+          <span className="attendance-info" title="Las faltas se calculan contra sesiones obligatorias aplicables, restando exenciones y registros válidos.">ℹ️</span>
+          <div className="attendance-filters">
+            <label>
+              Desde
+              <input
+                type="date"
+                value={fromFilter}
+                onChange={(e) => setFromFilter(e.target.value)}
+              />
+            </label>
+            <label>
+              Hasta
+              <input
+                type="date"
+                value={toFilter}
+                onChange={(e) => setToFilter(e.target.value)}
+              />
+            </label>
+            <label>
+              Mostrar
+              <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+                <option value="all">Todas</option>
+                <option value="present">Asistencias</option>
+                <option value="absent">Faltas</option>
+                <option value="excused">Justificadas</option>
+              </select>
+            </label>
+          </div>
+        </div>
+      </div>
 
-      <table
-        style={{
-          width: "100%",
-          borderCollapse: "collapse",
-          marginTop: "10px",
-          fontSize: "14px",
-        }}
+      {statement && (
+        <div className="attendance-overview attendance-overview--simple">
+          <div><span>Periodo</span><strong>{formatDate(statement.from)} - {formatDate(statement.to)}</strong></div>
+          <div><span>Asistencias</span><strong>{summary.presentCount ?? 0}</strong></div>
+          <div><span>Faltas</span><strong>{summary.absentCount ?? 0}</strong></div>
+          <div><span>Justificadas</span><strong>{summary.excusedCount ?? 0}</strong></div>
+        </div>
+      )}
+
+      {message && (
+        <StatusMessage variant={message.variant}>{message.text}</StatusMessage>
+      )}
+
+      {!sessions.length && !records.length ? (
+        <EmptyState
+          title="Sin sesiones registradas"
+          description="No hay sesiones o registros disponibles para este periodo."
+        />
+      ) : (
+        <div className="attendance-statement">
+          <section>
+            <h3>Sesiones</h3>
+            {renderSessionList(
+              filteredSessions,
+              "No hay sesiones en este periodo y filtro seleccionados."
+            )}
+          </section>
+
+          <section>
+            <h3>Exenciones activas</h3>
+            <div className="attendance-exception-form">
+              <label>
+                Día obligatorio
+                <select
+                  value={exceptionForm.weekday}
+                  onChange={(event) =>
+                    setExceptionForm((current) => ({
+                      ...current,
+                      weekday: event.target.value,
+                    }))
+                  }
+                  disabled={savingException}
+                >
+                  <option value="3">Miércoles</option>
+                  <option value="6">Sábado</option>
+                  <option value="0">Domingo</option>
+                </select>
+              </label>
+              <label>
+                Desde
+                <input
+                  type="date"
+                  value={exceptionForm.startsOn}
+                  onChange={(event) =>
+                    setExceptionForm((current) => ({
+                      ...current,
+                      startsOn: event.target.value,
+                    }))
+                  }
+                  disabled={savingException}
+                />
+              </label>
+              <label>
+                Hasta
+                <input
+                  type="date"
+                  value={exceptionForm.endsOn}
+                  onChange={(event) =>
+                    setExceptionForm((current) => ({
+                      ...current,
+                      endsOn: event.target.value,
+                    }))
+                  }
+                  disabled={savingException}
+                />
+              </label>
+              <label>
+                Motivo
+                <input
+                  type="text"
+                  value={exceptionForm.reason}
+                  onChange={(event) =>
+                    setExceptionForm((current) => ({
+                      ...current,
+                      reason: event.target.value,
+                    }))
+                  }
+                  disabled={savingException}
+                />
+              </label>
+              <button
+                type="button"
+                className="attendance-save"
+                onClick={handleCreateException}
+                disabled={savingException}
+              >
+                {savingException ? "Guardando..." : "Agregar exención"}
+              </button>
+            </div>
+            {exceptions.length === 0 ? (
+              <p className="attendance-empty-line">Sin exenciones activas en este periodo.</p>
+            ) : (
+              <div className="attendance-exception-list">
+                {exceptions.map((exception) => (
+                  <article key={exception.exceptionId}>
+                    <strong>{exception.reason}</strong>
+                    <span>
+                      {exception.scope}
+                      {exception.weekday !== null ? ` · día ${exception.weekday}` : ""}
+                      · desde {formatDate(exception.startsOn)}
+                      {exception.endsOn ? ` hasta ${formatDate(exception.endsOn)}` : ""}
+                    </span>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section>
+            <h3>Historial crudo</h3>
+            {records.length === 0 ? (
+              <p className="attendance-empty-line">Sin registros capturados.</p>
+            ) : (
+              <div className="attendance-table-scroll">
+                <table className="attendance-table">
+                  <thead>
+                    <tr>
+                      <th>Fecha y hora</th>
+                      <th>Estado</th>
+                      <th>Origen</th>
+                      <th>Sesión</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {records.map((record, index) => {
+                      const key = recordKey(record, index);
+                      const isCancelled = record.recordStatus === "cancelled";
+
+                      return (
+                        <tr key={key}>
+                          <td>{record.FechaHora}</td>
+                          <td>{record.Estado}{isCancelled ? " · Cancelada" : ""}</td>
+                          <td>{record.Tipo}</td>
+                          <td>{record.activityName || record.sessionId || "Registro legacy"}</td>
+                          <td>
+                            <div className="attendance-actions">
+                              <button
+                                type="button"
+                                className="attendance-delete"
+                                onClick={() =>
+                                  setPendingDelete({
+                                    record,
+                                    reason: "",
+                                  })
+                                }
+                                disabled={isCancelled}
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={!!pendingDelete.record}
+        title="Cancelar asistencia"
+        message="¿Deseas cancelar este registro? La cancelación será lógica y quedará auditada."
+        confirmLabel="Cancelar asistencia"
+        destructive
+        busy={deleting}
+        onCancel={() => !deleting && setPendingDelete(EMPTY_DELETE)}
+        onConfirm={handleEliminar}
       >
-        <thead style={{ backgroundColor: "#f2f2f2" }}>
-          <tr>
-            <th style={th}>Fecha y Hora</th>
-            <th style={th}>Estado</th>
-            <th style={th}>Tipo</th>
-            <th style={th}>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {asistencias.map((asis, index) => {
-            const isSaving = savingRow === asis.row_number;
-            const isDeleting = deletingRow === asis.row_number;
-            const isBusy = isSaving || isDeleting;
-
-            return (
-              <tr key={asis.row_number ?? index}>
-                <td style={td}>{asis.FechaHora}</td>
-                <td style={td}>
-                  <select
-                    value={asis.Estado}
-                    onChange={(e) => handleEditarEstado(index, e.target.value)}
-                    disabled={isBusy}
-                  >
-                    <option value="Asistencia">Asistencia</option>
-                    <option value="Falta">Falta</option>
-                    <option value="Retardo">Retardo</option>
-                    <option value="Justificada">Justificada</option>
-                  </select>
-                </td>
-                <td style={td}>{asis.Tipo}</td>
-                <td style={td}>
-                  <button
-                    onClick={() => handleGuardarCambios(index)}
-                    style={btnGuardar}
-                    disabled={isBusy}
-                  >
-                    {isSaving ? "Guardando..." : "💾 Guardar"}
-                  </button>
-                  <button
-                    onClick={() => handleEliminar(asis)}
-                    style={btnEliminar}
-                    disabled={isBusy}
-                  >
-                    {isDeleting ? "Eliminando..." : "🗑 Eliminar"}
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+        <label className="attendance-cancel-reason">
+          Motivo
+          <textarea
+            value={pendingDelete.reason}
+            onChange={(event) =>
+              setPendingDelete((current) => ({
+                ...current,
+                reason: event.target.value,
+              }))
+            }
+            rows={3}
+            disabled={deleting}
+          />
+        </label>
+      </ConfirmDialog>
+    </section>
   );
-};
-
-const th = { border: "1px solid #ddd", padding: "8px", textAlign: "left" };
-const td = { border: "1px solid #ddd", padding: "8px" };
-
-const btnGuardar = {
-  backgroundColor: "#4CAF50",
-  color: "white",
-  border: "none",
-  padding: "4px 8px",
-  marginRight: "5px",
-  borderRadius: "4px",
-  cursor: "pointer",
-};
-
-const btnEliminar = {
-  backgroundColor: "#ff4d4d",
-  color: "white",
-  border: "none",
-  padding: "4px 8px",
-  borderRadius: "4px",
-  cursor: "pointer",
 };
 
 export default ModuloAsistencias;

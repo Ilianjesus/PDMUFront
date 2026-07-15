@@ -1,0 +1,50 @@
+{
+  "ok": true,
+  "requestId": "018f5f86-42b2-7a14-9f29-c78a10264d90",
+  "action": "element.get",
+  "data": {
+    "element": {
+      "elementId": "PDMU-SEED-001",
+      "name": {
+        "givenNames": "Elemento",
+        "paternalSurname": "Prueba",
+        "maternalSurname": "Supabase"
+      },
+      "birthDate": "2010-04-17",
+      "sexCode": "F",
+      "groupCode": "SEED",
+      "guardian": {
+        "fullName": "Tutor de Prueba",
+        "phone": "5500000000"
+      },
+      "medicalNotes": null,
+      "status": "active",
+      "version": 1,
+      "createdAt": "2026-06-29T18:00:00.000Z",
+      "updatedAt": "2026-06-29T18:00:00.000Z"
+    },
+    "documents": [
+      {
+        "documentId": "doc_seed_birth_certificate_001",
+        "type": "birth_certificate",
+        "status": "available",
+        "fileName": "acta-prueba.pdf",
+        "uploadedAt": "2026-06-29T18:00:00.000Z",
+        "downloadUrl": "https://example.invalid/authorized/temporary-document"
+      }
+    ],
+    "assets": {
+      "driveFolder": {
+        "status": "ready"
+      },
+      "qr": {
+        "status": "ready",
+        "downloadUrl": "https://example.invalid/authorized/temporary-qr"
+      }
+    }
+  },
+  "meta": {
+    "contractVersion": "2.0",
+    "processedAt": "2026-06-29T18:30:02.000Z"
+  }
+}

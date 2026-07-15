@@ -1,41 +1,96 @@
-import { createContext, useContext, useEffect, useState } from "react";
-import { auth } from "../firebase";
-import { setPersistence, browserSessionPersistence } from "firebase/auth";
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
-
-setPersistence(auth, browserSessionPersistence);
-
-const AuthContext = createContext();
-
-export function useAuth() {
-  return useContext(AuthContext);
-}
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AuthContext } from "./authContext";
+import {
+  getCurrentSupabaseSession,
+  getSupabaseAccessToken,
+  loginWithPassword,
+  logoutSupabaseSession,
+  observeSupabaseSession,
+  requestEmailOtp,
+  verifyEmailOtp,
+} from "../services/auth/supabaseAuth";
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true); // Mientras Firebase verifica
-
-  async function login(email, password) {
-    const result = await signInWithEmailAndPassword(auth, email, password);
-    localStorage.setItem("isLoggedIn", "true"); // Guardamos flag
-    return result;
-  }
-
-  async function logout() {
-    await signOut(auth);
-    localStorage.removeItem("isLoggedIn");
-    setUser(null);
-  }
+  const [authStatus, setAuthStatus] = useState("loading");
+  const [session, setSession] = useState(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser);
-      setLoading(false);
+    let active = true;
+    const unsubscribe = observeSupabaseSession((nextSession) => {
+      if (!active) return;
+      setSession(nextSession);
+      setAuthStatus(nextSession ? "authenticated" : "unauthenticated");
     });
-    return unsubscribe;
+
+    async function initializeSession() {
+      try {
+        const currentSession = await getCurrentSupabaseSession();
+        if (!active) return;
+        setSession(currentSession);
+        setAuthStatus(currentSession ? "authenticated" : "unauthenticated");
+      } catch (error) {
+        if (!active) return;
+        console.error("No se pudo recuperar la sesión de Supabase:", error);
+        setSession(null);
+        setAuthStatus("unauthenticated");
+      }
+    }
+
+    initializeSession();
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, []);
 
-  const value = { user, login, logout, loading };
+  const requestOtp = useCallback((email) => requestEmailOtp(email), []);
+
+  const verifyOtp = useCallback(async (email, token) => {
+    const nextSession = await verifyEmailOtp(email, token);
+    setSession(nextSession);
+    setAuthStatus("authenticated");
+    return nextSession;
+  }, []);
+
+  const loginPassword = useCallback(async (email, password) => {
+    const nextSession = await loginWithPassword(email, password);
+    setSession(nextSession);
+    setAuthStatus("authenticated");
+    return nextSession;
+  }, []);
+
+  const logout = useCallback(async () => {
+    await logoutSupabaseSession();
+    setSession(null);
+    setAuthStatus("unauthenticated");
+  }, []);
+
+  const getAccessToken = useCallback(
+    (forceRefresh = false) => getSupabaseAccessToken(forceRefresh),
+    []
+  );
+
+  const value = useMemo(
+    () => ({
+      authStatus,
+      session,
+      requestOtp,
+      verifyOtp,
+      loginPassword,
+      logout,
+      getAccessToken,
+    }),
+    [
+      authStatus,
+      session,
+      requestOtp,
+      verifyOtp,
+      loginPassword,
+      logout,
+      getAccessToken,
+    ]
+  );
 
   return (
     <AuthContext.Provider value={value}>
