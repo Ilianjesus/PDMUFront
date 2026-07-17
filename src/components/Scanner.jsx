@@ -7,7 +7,7 @@ import {
 } from "../services/attendanceService";
 import { StatusMessage } from "./ui/StatusMessage";
 import { PageHeader } from "./ui/PageHeader";
-import { Camera, CheckCircle2, RotateCcw, XCircle } from "lucide-react";
+import { Camera, CheckCircle2, Play, RotateCcw, XCircle } from "lucide-react";
 import "../styles/Scanner.css";
 
 const CAMERA_START_TIMEOUT_MS = 12000;
@@ -30,6 +30,10 @@ function isCameraSecureContext() {
   );
 }
 
+function canUseCameraApi() {
+  return typeof navigator !== "undefined" && Boolean(navigator.mediaDevices?.getUserMedia);
+}
+
 function getCameraErrorMessage(error) {
   const name = error?.name || "";
   const message = String(error?.message || error || "").toLowerCase();
@@ -44,6 +48,10 @@ function getCameraErrorMessage(error) {
 
   if (name === "NotReadableError" || message.includes("could not start video source")) {
     return "La cámara está ocupada por otra aplicación o el navegador no pudo iniciarla.";
+  }
+
+  if (name === "OverconstrainedError" || message.includes("constraint")) {
+    return "No se pudo usar la cámara solicitada. Intenta de nuevo o revisa los permisos del navegador.";
   }
 
   if (message.includes("insecure") || message.includes("secure context")) {
@@ -69,7 +77,8 @@ function withTimeout(promise, timeoutMs) {
 
 export function Scanner() {
   const [scanResults, setScanResults] = useState([]);
-  const [scanning, setScanning] = useState(true);
+  const [scanning, setScanning] = useState(false);
+  const [hasStartedScan, setHasStartedScan] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [startingCamera, setStartingCamera] = useState(false);
   const [scannerError, setScannerError] = useState("");
@@ -85,6 +94,25 @@ export function Scanner() {
   const selectedSession = sessions.find(
     (session) => session.sessionId === selectedSessionId
   );
+
+  const stopScanner = useCallback(async () => {
+    const scanner = scannerRef.current;
+    scannerRef.current = null;
+
+    if (!scanner) return;
+
+    try {
+      await scanner.stop();
+    } catch {
+      // html5-qrcode rechaza stop() si todavía no empezó; clear() igual limpia el contenedor.
+    }
+
+    try {
+      scanner.clear();
+    } catch (err) {
+      console.error("Error al detener scanner:", err);
+    }
+  }, []);
 
   useEffect(() => {
     async function loadSessions() {
@@ -131,6 +159,7 @@ export function Scanner() {
     setScanning(false);
     setProcessing(true);
     setScannerError("");
+    void stopScanner();
 
     try {
       if (!selectedSessionId) {
@@ -175,113 +204,113 @@ export function Scanner() {
       pendingCodes.current.delete(normalizedResult);
       setProcessing(false);
     }
-  }, [selectedSessionId]);
+  }, [selectedSessionId, stopScanner]);
 
   const handleScanError = useCallback(() => undefined, []);
 
-  useEffect(() => {
-    let cancelled = false;
+  const startScanner = useCallback(async () => {
+    if (startingCamera || processing) return;
 
-    async function stopScanner() {
-      const scanner = scannerRef.current;
-      scannerRef.current = null;
-
-      if (!scanner) return;
-
-      try {
-        await scanner.stop();
-      } catch {
-        // html5-qrcode rechaza stop() si todavía no empezó; clear() igual limpia el contenedor.
-      }
-
-      try {
-        scanner.clear();
-      } catch (err) {
-        console.error("Error al detener scanner:", err);
-      }
+    if (!selectedSessionId) {
+      setScannerError("Selecciona una sesión antes de activar la cámara.");
+      return;
     }
 
-    async function initScanner() {
-      if (!isCameraSecureContext()) {
-        setScannerError("La cámara en móvil requiere abrir la app con HTTPS o desde localhost.");
-        setScanning(false);
-        setStartingCamera(false);
-        return;
-      }
+    if (!isCameraSecureContext()) {
+      setScannerError("La cámara en móvil requiere abrir la app con HTTPS o desde localhost.");
+      setScanning(false);
+      setStartingCamera(false);
+      return;
+    }
+
+    if (!canUseCameraApi()) {
+      setScannerError("Este navegador no permite usar la cámara desde esta vista. Abre el enlace directamente en Safari o Chrome.");
+      setScanning(false);
+      setStartingCamera(false);
+      return;
+    }
+
+    const config = {
+      fps: 8,
+      qrbox: (viewfinderWidth, viewfinderHeight) => {
+        const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+        const size = Math.floor(Math.min(280, minEdge * 0.72));
+        return { width: size, height: size };
+      },
+      disableFlip: true,
+    };
+
+    try {
+      await stopScanner();
+      setHasStartedScan(true);
+      setScanning(true);
+      setStartingCamera(true);
+      setScannerError("");
+
+      const html5QrCode = new Html5Qrcode(scannerTargetId.current, {
+        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+      });
+      scannerRef.current = html5QrCode;
 
       try {
-        await stopScanner();
-        if (cancelled) return;
+        await withTimeout(
+          html5QrCode.start(
+            { facingMode: "environment" },
+            config,
+            handleScanSuccess,
+            handleScanError
+          ),
+          CAMERA_START_TIMEOUT_MS
+        );
+        return;
+      } catch (primaryError) {
+        console.warn("No se pudo abrir la cámara trasera, intentando fallback...", primaryError);
+      }
 
-        setStartingCamera(true);
-        setScannerError("");
+      const devices = await Html5Qrcode.getCameras();
+      if (!devices || devices.length === 0) {
+        throw new DOMException("No camera devices found", "NotFoundError");
+      }
 
-        const html5QrCode = new Html5Qrcode(scannerTargetId.current, {
-          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-        });
-        scannerRef.current = html5QrCode;
+      const preferredDevice =
+        devices.find((device) => /back|rear|environment|trasera/i.test(device.label)) ||
+        devices[devices.length - 1];
 
-        const config = {
-          fps: 8,
-          qrbox: (viewfinderWidth, viewfinderHeight) => {
-            const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-            const size = Math.floor(Math.min(280, minEdge * 0.72));
-            return { width: size, height: size };
-          },
-          aspectRatio: 1,
-          disableFlip: true,
-        };
-
-        await withTimeout(html5QrCode.start(
-          { facingMode: { ideal: "environment" } },
+      await withTimeout(
+        html5QrCode.start(
+          { deviceId: { exact: preferredDevice.id } },
           config,
           handleScanSuccess,
           handleScanError
-        ), CAMERA_START_TIMEOUT_MS);
-      } catch (err) {
-        console.warn("No se pudo abrir la cámara trasera, intentando fallback...", err);
-
-        try {
-          const html5QrCode = scannerRef.current;
-          if (!html5QrCode || cancelled) return;
-
-          const devices = await Html5Qrcode.getCameras();
-          if (!devices || devices.length === 0) {
-            setScannerError("No se encontró ninguna cámara en el dispositivo.");
-            setScanning(false);
-            return;
-          }
-
-          await withTimeout(html5QrCode.start(
-            { deviceId: { exact: devices[0].id } },
-            { fps: 8, qrbox: { width: 240, height: 240 }, aspectRatio: 1 },
-            handleScanSuccess,
-            handleScanError
-          ), CAMERA_START_TIMEOUT_MS);
-        } catch (err2) {
-          console.error("Error al iniciar el scanner:", err2);
-          setScannerError(getCameraErrorMessage(err2));
-          setScanning(false);
-        }
-      } finally {
-        if (!cancelled) setStartingCamera(false);
-      }
-    }
-
-    if (scanning && selectedSessionId && !loadingSessions) initScanner();
-
-    return () => {
-      cancelled = true;
+        ),
+        CAMERA_START_TIMEOUT_MS
+      );
+    } catch (err) {
+      console.error("Error al iniciar el scanner:", err);
+      await stopScanner();
+      setScannerError(getCameraErrorMessage(err));
+      setScanning(false);
+    } finally {
       setStartingCamera(false);
+    }
+  }, [
+    handleScanError,
+    handleScanSuccess,
+    processing,
+    selectedSessionId,
+    startingCamera,
+    stopScanner,
+  ]);
+
+  useEffect(() => {
+    return () => {
       stopScanner();
     };
-  }, [scanning, selectedSessionId, loadingSessions, handleScanSuccess, handleScanError]);
+  }, [stopScanner]);
 
   function restartScanner() {
-    setScannerError("");
     setProcessing(false);
-    setStartingCamera(false);
-    setScanning(true);
+    startScanner();
   }
 
   return (
@@ -305,7 +334,9 @@ export function Scanner() {
                     ? "Activando cámara"
                     : scanning
                     ? "Cámara activa"
-                    : "Escaneo finalizado"}
+                    : hasStartedScan
+                    ? "Escaneo finalizado"
+                    : "Escáner listo"}
                 </h2>
                 <p>
                   {processing
@@ -316,7 +347,9 @@ export function Scanner() {
                     ? selectedSession
                       ? `Sesión: ${selectedSession.activityName} · ${selectedSession.sessionDate}`
                       : "Selecciona una sesión antes de escanear."
-                    : "Puedes iniciar un nuevo escaneo cuando estés listo."}
+                    : hasStartedScan
+                    ? "Puedes iniciar un nuevo escaneo cuando estés listo."
+                    : "Activa la cámara cuando estés listo para escanear."}
                 </p>
               </div>
             </div>
@@ -335,7 +368,9 @@ export function Scanner() {
                   pendingCodes.current.clear();
                   setScanResults([]);
                   setScannerError("");
-                  setScanning(true);
+                  setHasStartedScan(false);
+                  setScanning(false);
+                  stopScanner();
                 }}
                 disabled={processing || loadingSessions}
               >
@@ -358,12 +393,29 @@ export function Scanner() {
               <div className="scanner-processing" role="status" aria-live="polite">
                 Selecciona una sesión para activar la cámara.
               </div>
-            ) : scanning ? (
+            ) : processing ? (
+              <div className="scanner-processing" role="status" aria-live="polite">
+                <span className="loading-state__spinner" aria-hidden="true" />
+                Validando con el sistema...
+              </div>
+            ) : (
               <div className="scanner-box-wrap">
                 {startingCamera && (
                   <div className="scanner-camera-overlay" role="status" aria-live="polite">
                     <span className="loading-state__spinner" aria-hidden="true" />
                     Abriendo cámara...
+                  </div>
+                )}
+                {!scanning && !startingCamera && (
+                  <div className="scanner-camera-overlay scanner-camera-overlay--idle">
+                    <button type="button" onClick={restartScanner} className="ui-button scanner-restart">
+                      {hasStartedScan ? (
+                        <RotateCcw aria-hidden="true" />
+                      ) : (
+                        <Play aria-hidden="true" />
+                      )}
+                      {hasStartedScan ? "Realizar otro escaneo" : "Activar cámara"}
+                    </button>
                   </div>
                 )}
                 <div
@@ -372,16 +424,6 @@ export function Scanner() {
                   aria-label="Lector de código QR"
                 />
               </div>
-            ) : processing ? (
-              <div className="scanner-processing" role="status" aria-live="polite">
-                <span className="loading-state__spinner" aria-hidden="true" />
-                Validando con el sistema...
-              </div>
-            ) : (
-              <button type="button" onClick={restartScanner} className="ui-button scanner-restart">
-                <RotateCcw aria-hidden="true" />
-                Realizar otro escaneo
-              </button>
             )}
           </section>
 

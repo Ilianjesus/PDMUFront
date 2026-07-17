@@ -98,6 +98,15 @@
   text-align: center;
 }
 
+.scanner-camera-overlay--idle {
+  padding: var(--space-5);
+}
+
+.scanner-camera-overlay--idle .scanner-restart {
+  width: min(100%, 320px);
+  margin-top: 0;
+}
+
 .scanner-processing {
   min-height: 320px;
   display: flex;
