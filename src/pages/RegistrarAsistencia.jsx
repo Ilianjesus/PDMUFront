@@ -150,6 +150,7 @@ export function RegistrarAsistencia() {
   const [typeForm, setTypeForm] = useState(INITIAL_TYPE_FORM);
   const [attendanceSession, setAttendanceSession] = useState(null);
   const [elementoSeleccionado, setElementoSeleccionado] = useState(null);
+  const [attendanceSearchResetKey, setAttendanceSearchResetKey] = useState(0);
   const [attendanceStatus, setAttendanceStatus] = useState("present");
   const [busy, setBusy] = useState(false);
 
@@ -242,11 +243,15 @@ export function RegistrarAsistencia() {
     if (busy) return;
     setAttendanceSession(null);
     setElementoSeleccionado(null);
+    setAttendanceSearchResetKey((current) => current + 1);
     setAttendanceStatus("present");
   };
 
   const openAttendanceSession = (session) => {
     setAttendanceSession(session);
+    setElementoSeleccionado(null);
+    setAttendanceSearchResetKey((current) => current + 1);
+    setAttendanceStatus("present");
     setTypeModalDate(null);
   };
 
@@ -307,6 +312,9 @@ export function RegistrarAsistencia() {
         startsAt: "",
         categoryLabel: typeForm.required ? "Obligatoria" : "Extra",
       });
+      setElementoSeleccionado(null);
+      setAttendanceSearchResetKey((current) => current + 1);
+      setAttendanceStatus("present");
       setTypeModalDate(null);
     } catch (error) {
       console.error("Error creando sesión:", error);
@@ -345,6 +353,7 @@ export function RegistrarAsistencia() {
       if (!result.ok) throw new Error(result.message);
 
       setElementoSeleccionado(null);
+      setAttendanceSearchResetKey((current) => current + 1);
       setAttendanceStatus("present");
       setMensaje({
         tipo: "exito",
@@ -665,6 +674,7 @@ export function RegistrarAsistencia() {
 
               <Buscador
                 placeholder="Buscar por nombre o código"
+                resetSignal={attendanceSearchResetKey}
                 onSeleccionar={(item) => {
                   setElementoSeleccionado(item);
                   setMensaje(null);

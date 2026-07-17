@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { searchElements } from "../services/elementsService";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import "../styles/Buscador.css";
@@ -6,15 +6,31 @@ import "../styles/Buscador.css";
 const Buscador = ({
   placeholder = "Buscar...",
   onSeleccionar,
+  resetSignal = 0,
 }) => {
   const [query, setQuery] = useState("");
   const [filtrados, setFiltrados] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchError, setSearchError] = useState("");
+  const searchGeneration = useRef(0);
   const debouncedQuery = useDebouncedValue(query, 300);
+
+  const clearSearch = useCallback(() => {
+    searchGeneration.current += 1;
+    setQuery("");
+    setFiltrados([]);
+    setSearchError("");
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    clearSearch();
+  }, [clearSearch, resetSignal]);
 
   useEffect(() => {
     let cancelado = false;
+    const generation = searchGeneration.current + 1;
+    searchGeneration.current = generation;
 
     const fetchData = async () => {
       const searchQuery = debouncedQuery.trim();
@@ -38,23 +54,25 @@ const Buscador = ({
 
         if (!result.ok) {
           if (!cancelado) {
-            setFiltrados([]);
-            setSearchError(result.message);
+            if (generation === searchGeneration.current) {
+              setFiltrados([]);
+              setSearchError(result.message);
+            }
           }
           return;
         }
 
-        if (!cancelado) {
+        if (!cancelado && generation === searchGeneration.current) {
           setFiltrados(result.data);
         }
       } catch (error) {
-        if (!cancelado) {
+        if (!cancelado && generation === searchGeneration.current) {
           console.error("Error inesperado en la búsqueda:", error);
           setFiltrados([]);
           setSearchError("No se pudo completar la búsqueda");
         }
       } finally {
-        if (!cancelado) setLoading(false);
+        if (!cancelado && generation === searchGeneration.current) setLoading(false);
       }
     };
 
@@ -64,6 +82,11 @@ const Buscador = ({
       cancelado = true;
     };
   }, [debouncedQuery]);
+
+  const handleSelect = (item) => {
+    onSeleccionar?.(item);
+    clearSearch();
+  };
 
   return (
     <div className="buscador-container">
@@ -90,7 +113,7 @@ const Buscador = ({
               <button
                 type="button"
                 className="buscador-result-button"
-                onClick={() => onSeleccionar?.(item)}
+                onClick={() => handleSelect(item)}
               >
                 <span>
                   {item.Nombre} {item.ApellidoPaterno} {item.ApellidoMaterno}
