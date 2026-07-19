@@ -3,7 +3,8 @@ import { puntos } from "../data/Puntos";
 import { getDashboardSummary } from "../services/dashboardService";
 import { StatusMessage } from "../components/ui/StatusMessage";
 import { PageHeader } from "../components/ui/PageHeader";
-import { Info } from "lucide-react";
+import { EmptyState } from "../components/ui/EmptyState";
+import { AlertCircle, Info, RefreshCw } from "lucide-react";
 import "../styles/Home.css";
 
 function SectionTooltip({ label }) {
@@ -24,14 +25,11 @@ export function Home() {
 
   const [resumenRapido, setResumenRapido] = useState([
     { label: "Elementos activos", value: "—" },
+    { label: "Pagos pendientes", value: "—" },
     { label: "Asistencias hoy", value: "—" },
   ]);
 
-  const [alertasImportantes, setAlertasImportantes] = useState([
-    "Aquí se mostrarán alumnos con pagos atrasados.",
-    "Aquí aparecerán documentos pendientes por cargar.",
-    "Aquí se listarán alertas de faltas o incidencias importantes.",
-  ]);
+  const [alertasImportantes, setAlertasImportantes] = useState([]);
 
   useEffect(() => {
     const index = Math.floor(Math.random() * puntos.length);
@@ -56,6 +54,10 @@ export function Home() {
           value: resumen.elementosActivos ?? "—",
         },
         {
+          label: "Pagos pendientes",
+          value: resumen.pagosPendientes ?? "—",
+        },
+        {
           label: "Asistencias hoy",
           value: resumen.asistenciasHoy ?? "—",
         },
@@ -71,9 +73,7 @@ export function Home() {
           )
         );
       } else {
-        setAlertasImportantes([
-          "No hay alertas importantes por el momento.",
-        ]);
+        setAlertasImportantes([]);
       }
     } catch (error) {
       console.error("Error cargando estadísticas:", error);
@@ -83,12 +83,11 @@ export function Home() {
 
       setResumenRapido([
         { label: "Elementos activos", value: "—" },
+        { label: "Pagos pendientes", value: "—" },
         { label: "Asistencias hoy", value: "—" },
       ]);
 
-      setAlertasImportantes([
-        "No se pudieron cargar las alertas importantes.",
-      ]);
+      setAlertasImportantes([]);
     } finally {
       setLoadingStats(false);
     }
@@ -103,7 +102,17 @@ export function Home() {
       <div className="page-shell__inner">
         <PageHeader
           title="Inicio"
+          description="Resumen operativo del día para revisar asistencia, pagos y pendientes."
           infoTooltip="Vista general para revisar pagos, asistencia y pendientes."
+          menuActions={[
+            {
+              id: "home-refresh",
+              label: loadingStats ? "Consultando" : "Actualizar",
+              icon: RefreshCw,
+              onSelect: cargarEstadisticas,
+              disabled: loadingStats,
+            },
+          ]}
         />
 
         <aside className="principle-banner" aria-label="Principio PDMU">
@@ -135,12 +144,11 @@ export function Home() {
 
           <div className="summary-grid">
             {resumenRapido.map((item) => (
-              <div className="summary-card" key={item.label}>
+              <div className="summary-card" key={item.label} aria-busy={loadingStats}>
                 <span className="summary-label">{item.label}</span>
                 <strong className="summary-value">
-                  {loadingStats ? "..." : item.value}
+                  {loadingStats ? "—" : item.value}
                 </strong>
-                <span className="summary-period">Actualizado al consultar</span>
               </div>
             ))}
           </div>
@@ -155,13 +163,27 @@ export function Home() {
           </div>
 
           <div className="section-card">
-            <ul className="section-list">
-              {alertasImportantes.map((alerta, index) => (
-                <li className="section-list-item" key={index}>
-                  {loadingStats ? "Cargando..." : alerta}
-                </li>
-              ))}
-            </ul>
+            {loadingStats ? (
+              <div className="alerts-loading" aria-label="Consultando pendientes">
+                <span />
+                <span />
+                <span />
+              </div>
+            ) : alertasImportantes.length > 0 ? (
+              <ul className="section-list">
+                {alertasImportantes.map((alerta, index) => (
+                  <li className="section-list-item" key={index}>
+                    <AlertCircle aria-hidden="true" />
+                    <span>{alerta}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <EmptyState
+                title="Sin pendientes críticos"
+                description="La operación no requiere atención inmediata."
+              />
+            )}
           </div>
         </section>
       </div>

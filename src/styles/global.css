@@ -117,56 +117,6 @@ body {
 
 .login-form .button { width: 100%; }
 
-.login-method-switch {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.25rem;
-  margin-bottom: 1rem;
-  padding: 0.25rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-subtle);
-}
-
-.login-method-switch button {
-  min-height: 40px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.login-method-switch button.active {
-  border-color: rgba(233, 185, 73, 0.32);
-  background: var(--color-accent-soft);
-  color: var(--color-accent-strong);
-}
-
-.login-method-switch--choices {
-  margin-bottom: 0;
-}
-
-.login-method-switch--choices button {
-  min-height: 52px;
-  border-color: var(--color-border);
-  background: var(--color-bg-subtle);
-  color: var(--color-text);
-}
-
-.login-method-switch--choices button:hover {
-  border-color: rgba(233, 185, 73, 0.42);
-  background: var(--color-accent-soft);
-  color: var(--color-accent-strong);
-}
-
-.login-method-switch button:disabled {
-  cursor: not-allowed;
-  opacity: 0.72;
-}
-
 .login-otp-input {
   text-align: center;
   font-size: 1.2rem;
@@ -213,7 +163,7 @@ body {
 
 /* Inscripciones */
 .registrar-container {
-  min-height: calc(100vh - var(--header-height));
+  min-height: 100vh;
 }
 
 .registration-workspace {

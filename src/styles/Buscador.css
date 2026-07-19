@@ -7,15 +7,54 @@
 
 .buscador-input {
   box-sizing: border-box;
+  padding-right: 2.7rem;
 }
 
 .buscador-input::placeholder { color: var(--color-text-subtle); }
 
+.buscador-clear {
+  position: absolute;
+  top: calc(var(--control-height) / 2);
+  right: 0.45rem;
+  z-index: 3;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-subtle);
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.buscador-clear:hover,
+.buscador-clear:focus-visible {
+  border-color: var(--color-border);
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.buscador-clear svg {
+  width: 18px;
+  height: 18px;
+}
+
 .buscador-loading,
 .buscador-noresult,
 .buscador-error {
-  margin: var(--space-2) 0 0;
-  padding: var(--space-2) 0 0;
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  left: 0;
+  z-index: 900;
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.24);
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
   text-align: center;
@@ -24,11 +63,16 @@
 .buscador-error { color: var(--color-danger-text); }
 
 .buscador-lista {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  left: 0;
+  z-index: 900;
   max-height: 280px;
-  margin: var(--space-2) 0 0;
+  margin: 0;
   padding: 0;
   border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   overflow-y: auto;
   background: var(--color-surface);
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.24);
@@ -63,7 +107,6 @@
 @media (max-width: 520px) {
   .buscador-lista {
     max-height: 240px;
-    border-radius: var(--radius-sm);
   }
 
   .buscador-result-button {

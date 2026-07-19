@@ -12,7 +12,7 @@ import { StatusMessage } from "./ui/StatusMessage";
 import { PageHeader } from "./ui/PageHeader";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
 import {
-  ArrowLeft,
+  ChevronRight,
   ClipboardCheck,
   CreditCard,
   FileText,
@@ -231,7 +231,7 @@ const PanelAdmin = () => {
     "Elemento sin nombre";
 
   const getBasicInfo = (item) => {
-    if (item?.Grupo) return `Grupo ${item.Grupo}`;
+    if (item?.Grupo) return item.Grupo;
     return "Grupo pendiente";
   };
 
@@ -250,27 +250,41 @@ const PanelAdmin = () => {
   }, [elementos, filtroCategoria, filtroRama]);
 
   const filtrosActivos = Boolean(filtroRama || filtroCategoria);
+  const directoryCountLabel = cargandoElementos
+    ? "Cargando elementos"
+    : filtrosActivos
+    ? `${elementosFiltrados.length} de ${elementos.length} activos`
+    : `${elementos.length} activos`;
 
   return (
     <div className="panel-container page-shell">
       <div className="page-shell__inner">
         <PageHeader
-          eyebrow="Administración"
-          title="Elementos"
-          infoTooltip="Consulta elementos, información básica, pagos y asistencias."
-          actions={
-            !seleccionado && (
-              <button
-                type="button"
-                className="panel-refresh-icon"
-                onClick={cargarElementos}
-                disabled={cargandoElementos}
-                aria-label="Actualizar elementos"
-                title="Actualizar elementos"
-              >
-                <RefreshCw aria-hidden="true" />
-              </button>
-            )
+          title={seleccionado ? "Elemento" : "Elementos"}
+          description={
+            seleccionado
+              ? getElementName(seleccionado)
+              : "Busca, filtra y abre expedientes activos."
+          }
+          infoTooltip={
+            seleccionado
+              ? "Expediente individual del elemento seleccionado."
+              : "Consulta elementos, información básica, pagos y asistencias."
+          }
+          onBack={seleccionado ? handleVolverListado : undefined}
+          backLabel="Volver a elementos"
+          menuActions={
+            !seleccionado
+              ? [
+                  {
+                    id: "elements-refresh",
+                    label: cargandoElementos ? "Actualizando" : "Actualizar",
+                    icon: RefreshCw,
+                    onSelect: cargarElementos,
+                    disabled: cargandoElementos,
+                  },
+                ]
+              : []
           }
         />
 
@@ -281,32 +295,26 @@ const PanelAdmin = () => {
       )}
 
       {!seleccionado && (
-        <section className="panel-directory" aria-labelledby="elements-list-title">
-          <div className="panel-directory__sticky">
+        <div className="panel-directory-workspace">
+          <section className="panel-controls-surface" aria-label="Buscar y filtrar elementos">
+            <div className="panel-controls-surface__header">
+              <div>
+                <span>Consulta</span>
+                <h2>Búsqueda y filtros</h2>
+              </div>
+            </div>
+
             <div className="panel-search" aria-label="Buscar elemento">
-              <span
-                className="info-tooltip panel-search__icon"
-                tabIndex={0}
-                aria-label="Busca por nombre completo."
-              >
+              <div className="panel-search__field">
                 <Search aria-hidden="true" />
-                <span className="info-tooltip__content" role="tooltip">
-                  Busca por nombre completo.
-                </span>
-              </span>
-              <Buscador
-                placeholder="Buscar por nombre"
-                onSeleccionar={handleSeleccionar}
-              />
+                <Buscador
+                  placeholder="Buscar elemento"
+                  onSeleccionar={handleSeleccionar}
+                />
+              </div>
             </div>
 
             <div className="panel-filters" aria-label="Filtros de elementos">
-              <div className="panel-directory-count" id="elements-list-title">
-                {cargandoElementos
-                  ? "Cargando..."
-                  : `${elementosFiltrados.length} de ${elementos.length} activos`}
-              </div>
-
               <fieldset className="panel-filter-group">
                 <legend>Rama</legend>
                 <div className="panel-filter-segment" role="group" aria-label="Filtrar por rama">
@@ -361,72 +369,72 @@ const PanelAdmin = () => {
                   }}
                   disabled={cargandoElementos}
                 >
-                  Limpiar
+                  Limpiar filtros
                 </button>
               )}
             </div>
-          </div>
+          </section>
 
-          {elementosError && (
-            <StatusMessage variant="error">{elementosError}</StatusMessage>
-          )}
-
-          {cargandoElementos ? (
-            <LoadingState compact label="Cargando elementos..." />
-          ) : elementos.length === 0 && !elementosError ? (
-            <EmptyState
-              title="Sin elementos registrados"
-              description="Cuando existan elementos activos aparecerán en esta lista."
-            />
-          ) : elementosFiltrados.length === 0 ? (
-            <EmptyState
-              title="Sin resultados"
-              description="Ajusta los filtros para ver más elementos."
-            />
-          ) : (
-            <div className="panel-elements__list" role="list">
-              {elementosFiltrados.map((item) => (
-                <button
-                  type="button"
-                  className="panel-element-row"
-                  key={item.ID}
-                  onClick={() => handleSeleccionar(item)}
-                  role="listitem"
-                >
-                  <span className="panel-element-row__main">
-                    <span className="panel-element-row__name">
-                      {getElementName(item)}
-                    </span>
-                  </span>
-                  <span className="panel-element-row__age">
-                    {Number.isInteger(item?.edad) ? `${item.edad} años` : "Edad pendiente"}
-                  </span>
-                  <span className="panel-element-row__meta">
-                    {getBasicInfo(item)}
-                  </span>
-                </button>
-              ))}
+          <section className="panel-list-surface" aria-labelledby="elements-list-title">
+            <div className="panel-list-surface__header">
+              <div>
+                <span>Directorio</span>
+                <h2 id="elements-list-title">Elementos activos</h2>
+              </div>
+              <strong>{directoryCountLabel}</strong>
             </div>
-          )}
-        </section>
+
+            {elementosError && (
+              <StatusMessage variant="error">{elementosError}</StatusMessage>
+            )}
+
+            {cargandoElementos ? (
+              <LoadingState compact label="Cargando elementos..." />
+            ) : elementos.length === 0 && !elementosError ? (
+              <EmptyState
+                title="Sin elementos registrados"
+                description="Cuando existan elementos activos aparecerán en esta lista."
+              />
+            ) : elementosFiltrados.length === 0 ? (
+              <EmptyState
+                title="Sin resultados"
+                description="Ajusta los filtros para ver más elementos."
+              />
+            ) : (
+              <div className="panel-elements__list" role="list">
+                {elementosFiltrados.map((item) => (
+                  <button
+                    type="button"
+                    className="panel-element-row"
+                    key={item.ID}
+                    onClick={() => handleSeleccionar(item)}
+                    role="listitem"
+                  >
+                    <span className="panel-element-row__main">
+                      <span className="panel-element-row__name">
+                        {getElementName(item)}
+                      </span>
+                      <span className="panel-element-row__details">
+                        <span className="panel-element-row__age">
+                          {Number.isInteger(item?.edad) ? `${item.edad} años` : "Edad pendiente"}
+                        </span>
+                        <span className="panel-element-row__meta">
+                          {getBasicInfo(item)}
+                        </span>
+                      </span>
+                    </span>
+                    <ChevronRight className="panel-element-row__arrow" aria-hidden="true" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
       )}
 
       {seleccionado && (
         <div className="panel-detail">
           <section className="panel-card" aria-label="Expediente seleccionado">
-            <div className="panel-selected">
-              <button
-                type="button"
-                className="panel-back-button"
-                onClick={handleVolverListado}
-                disabled={cargando}
-                aria-label="Volver a elementos"
-              >
-                <ArrowLeft aria-hidden="true" />
-              </button>
-              <strong>{getElementName(seleccionado)}</strong>
-            </div>
-
             <nav className="panel-buttons" aria-label="Secciones del expediente">
               <button
                 type="button"

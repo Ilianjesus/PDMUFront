@@ -1,7 +1,23 @@
 .pagos-container {
   width: min(100%, 1120px);
   margin: var(--space-5) auto 0;
+  display: grid;
+  gap: var(--space-5);
   color: var(--color-text);
+}
+
+.payments-section {
+  padding: var(--space-5);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(180deg, #17243a, #111d2e);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.24);
+}
+
+.payments-section--ledger {
+  background:
+    linear-gradient(180deg, #162337, #0e1928);
 }
 
 .pagos-titulo {
@@ -16,29 +32,25 @@
   gap: var(--space-2);
 }
 
-.payments-summary {
-  display: grid;
+.payments-module-header {
   margin-bottom: var(--space-4);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  background: var(--color-surface-raised);
 }
 
 .payments-summary {
+  display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
 }
 
 .payments-summary > div {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  padding: var(--space-3) var(--space-4);
-  border-right: 1px solid var(--color-border);
-}
-
-.payments-summary > div:last-child {
-  border-right: 0;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border: 1px solid rgba(190, 207, 228, 0.18);
+  border-radius: var(--radius-sm);
+  background: #101b2b;
 }
 
 .payments-summary span {
@@ -49,41 +61,12 @@
 .payments-summary strong {
   overflow: hidden;
   color: var(--color-text);
-  font-size: var(--font-size-sm);
+  font-size: 1.05rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.payment-entry-panel {
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(160px, 0.7fr) minmax(220px, 1fr) auto;
-  align-items: end;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
-  padding: var(--space-4);
-  border: 1px solid rgba(233, 185, 73, 0.32);
-  border-radius: var(--radius-md);
-  background: var(--color-accent-soft);
-}
-
-.payment-entry-panel > div:first-child {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-}
-
-.payment-entry-panel span,
-.payment-entry-panel small {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
-}
-
-.payment-entry-panel strong {
-  color: var(--color-accent-strong);
-  font-size: var(--font-size-base);
-}
-
-.payment-entry-panel label,
+.payment-reference-field,
 .payment-cancel-reason {
   display: grid;
   gap: var(--space-1);
@@ -92,8 +75,7 @@
   font-weight: 700;
 }
 
-.payment-entry-panel select,
-.payment-entry-panel input,
+.payment-reference-field input,
 .payment-cancel-reason textarea {
   width: 100%;
   min-height: 40px;
@@ -104,20 +86,118 @@
   color: var(--color-text);
 }
 
-.payment-entry-panel input:disabled {
+.payment-reference-field input:disabled {
   color: var(--color-text-subtle);
 }
 
-.payment-entry-panel__actions {
+.payment-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2400;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgba(0, 0, 0, 0.62);
+}
+
+.payment-entry-sheet {
+  width: min(100%, 430px);
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+}
+
+.payment-entry-sheet__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.payment-entry-sheet__header span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+.payment-entry-sheet__header h3 {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text);
+  font-size: 1.25rem;
+  font-weight: 650;
+}
+
+.payment-entry-sheet__header strong {
+  flex: 0 0 auto;
+  color: var(--color-accent-strong);
+  font-size: 1.15rem;
+}
+
+.payment-method-choice {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.payment-method-choice button {
+  min-height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.payment-method-choice button.active {
+  border-color: rgba(233, 185, 73, 0.3);
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+}
+
+.payment-entry-sheet__actions {
   display: flex;
   gap: var(--space-2);
 }
 
+.payments-section__header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.payments-section__header span {
+  color: var(--color-accent-strong);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.payments-section__header h3 {
+  margin: var(--space-1) 0 0;
+  font-size: 1.15rem;
+  font-weight: 650;
+}
+
 .payments-ledger {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  overflow: hidden;
-  background: var(--color-surface-raised);
+  background: #091321;
 }
 
 .payments-ledger__header,
@@ -140,15 +220,16 @@
 .payment-row {
   min-height: 76px;
   padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.payment-row:last-child {
-  border-bottom: 0;
+  border: 1px solid rgba(190, 207, 228, 0.18);
+  border-radius: var(--radius-sm);
+  background: #142136;
 }
 
 .payment-row--unpaid {
-  background: linear-gradient(90deg, rgba(220, 107, 107, 0.12), transparent 36%);
+  border-color: rgba(220, 107, 107, 0.22);
+  background:
+    linear-gradient(90deg, rgba(220, 107, 107, 0.12), transparent 38%),
+    var(--color-surface-raised);
 }
 
 .payment-row--future {
@@ -267,22 +348,6 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .payments-summary > div:nth-child(2n) {
-    border-right: 0;
-  }
-
-  .payments-summary > div {
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .payments-summary > div:nth-last-child(-n + 2) {
-    border-bottom: 0;
-  }
-
-  .payment-entry-panel {
-    grid-template-columns: 1fr;
-  }
-
   .payments-ledger__header {
     display: none;
   }
@@ -301,6 +366,12 @@
 @media (max-width: 600px) {
   .pagos-container {
     margin-top: var(--space-4);
+    gap: var(--space-4);
+  }
+
+  .payments-section {
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
   }
 
   .pagos-titulo {
@@ -309,31 +380,11 @@
 
   .payments-summary {
     grid-template-columns: 1fr;
-    border-radius: var(--radius-md);
   }
 
   .payments-summary > div {
-    border-right: 0;
-  }
-
-  .payments-summary > div:nth-last-child(-n + 2) {
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .payments-summary > div:last-child {
-    border-bottom: 0;
-  }
-
-  .payment-entry-panel__actions {
-    flex-direction: column;
-  }
-
-  .payment-entry-panel {
-    padding: var(--space-3);
-  }
-
-  .payment-entry-panel__actions > * {
-    width: 100%;
+    min-height: 72px;
+    justify-content: center;
   }
 
   .payment-row__actions {
@@ -371,6 +422,36 @@
   }
 
   .payments-ledger {
-    border-radius: var(--radius-md);
+    gap: var(--space-3);
+    padding: var(--space-2);
+    border-radius: var(--radius-sm);
+  }
+
+  .payment-sheet-overlay {
+    align-items: end;
+    padding: 0;
+  }
+
+  .payment-entry-sheet {
+    width: 100%;
+    padding: var(--space-5) var(--space-4) calc(var(--space-5) + env(safe-area-inset-bottom));
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+
+  .payment-entry-sheet__actions {
+    flex-direction: column-reverse;
+  }
+
+  .payment-entry-sheet__actions > * {
+    width: 100%;
+  }
+
+  .payment-row--unpaid {
+    background:
+      linear-gradient(180deg, rgba(220, 107, 107, 0.1), transparent 58%),
+      var(--color-surface-raised);
   }
 }

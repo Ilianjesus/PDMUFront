@@ -15,12 +15,11 @@ export function Login() {
   const [step, setStep] = useState("email");
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [resendMessage, setResendMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
-  const { authStatus, session, requestOtp, verifyOtp, loginPassword } = useAuth();
+  const { authStatus, session, requestOtp, verifyOtp } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -39,41 +38,19 @@ export function Login() {
     return () => clearTimeout(timer);
   }, [resendCooldown]);
 
-  const handleEmailContinue = (e) => {
+  const handleEmailContinue = async (e) => {
     e.preventDefault();
-    setEmail(email.trim());
-    setError("");
-    setResendMessage("");
-    setStep("method");
-  };
 
-  const handleRequestOtp = async () => {
     try {
       setSubmitting(true);
       setError("");
+      setResendMessage("");
       const result = await requestOtp(email);
       setEmail(result.email);
-      setResendMessage("");
       setStep("otp");
       setResendCooldown(60);
     } catch (err) {
       setError("No se pudo solicitar el código. Intenta nuevamente.");
-      console.error(err);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handlePasswordLogin = async (e) => {
-    e.preventDefault();
-
-    try {
-      setSubmitting(true);
-      setError("");
-      await loginPassword(email, password);
-      navigate(destination, { replace: true });
-    } catch (err) {
-      setError("El correo o la contraseña no son válidos.");
       console.error(err);
     } finally {
       setSubmitting(false);
@@ -122,16 +99,6 @@ export function Login() {
   const handleChangeEmail = () => {
     setStep("email");
     setOtp("");
-    setPassword("");
-    setError("");
-    setResendMessage("");
-    setResendCooldown(0);
-  };
-
-  const handleChoosePassword = () => {
-    setStep("password");
-    setOtp("");
-    setPassword("");
     setError("");
     setResendMessage("");
     setResendCooldown(0);
@@ -193,81 +160,8 @@ export function Login() {
               required
             />
             <button type="submit" className="button" disabled={submitting}>
-              Continuar
+              {submitting ? "Enviando..." : "Enviar código"}
             </button>
-          </form>
-        ) : step === "method" ? (
-          <div className="login-form">
-            <div className="login-form__header">
-              <h2>Método de acceso</h2>
-              <strong className="login-email-target">{email}</strong>
-            </div>
-            <div className="login-method-switch login-method-switch--choices" aria-label="Método de acceso">
-              <button
-                type="button"
-                onClick={handleRequestOtp}
-                disabled={submitting}
-              >
-                {submitting ? "Enviando..." : "Código OTP"}
-              </button>
-              <button
-                type="button"
-                onClick={handleChoosePassword}
-                disabled={submitting}
-              >
-                Contraseña
-              </button>
-            </div>
-            <button
-              type="button"
-              className="login-text-button login-text-button--standalone"
-              onClick={handleChangeEmail}
-              disabled={submitting}
-            >
-              Cambiar correo
-            </button>
-          </div>
-        ) : step === "password" ? (
-          <form onSubmit={handlePasswordLogin} className="login-form">
-            <div className="login-form__header">
-              <h2>Acceso con contraseña</h2>
-              <strong className="login-email-target">{email}</strong>
-            </div>
-            <label className="visually-hidden" htmlFor="login-password">
-              Contraseña
-            </label>
-            <input
-              id="login-password"
-              type="password"
-              placeholder="Contraseña"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="login-input"
-              autoComplete="current-password"
-              disabled={submitting}
-              required
-            />
-            <button type="submit" className="button" disabled={submitting}>
-              {submitting ? "Ingresando..." : "Entrar con contraseña"}
-            </button>
-            <div className="login-secondary-actions">
-              <button
-                type="button"
-                className="login-text-button"
-                onClick={() => setStep("method")}
-                disabled={submitting}
-              >
-                Cambiar método
-              </button>
-              <button
-                type="button"
-                className="login-text-button"
-                onClick={handleChangeEmail}
-                disabled={submitting}
-              >
-                Cambiar correo
-              </button>
-            </div>
           </form>
         ) : (
           <form onSubmit={handleVerifyOtp} className="login-form">
@@ -312,10 +206,10 @@ export function Login() {
               <button
                 type="button"
                 className="login-text-button"
-                onClick={() => setStep("method")}
+                onClick={handleChangeEmail}
                 disabled={submitting}
               >
-                Cambiar método
+                Cambiar correo
               </button>
             </div>
           </form>

@@ -1,5 +1,5 @@
 .app-layout {
-  min-height: calc(100vh - var(--header-height));
+  min-height: 100vh;
   background: var(--color-bg);
 }
 
@@ -9,7 +9,7 @@
 
 .app-content {
   min-width: 0;
-  min-height: calc(100vh - var(--header-height));
+  min-height: 100vh;
   padding-bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom));
 }
 
@@ -89,8 +89,8 @@
 
   .app-sidebar {
     position: sticky;
-    top: var(--header-height);
-    height: calc(100vh - var(--header-height));
+    top: 0;
+    height: 100vh;
     display: flex;
     flex-direction: column;
     justify-content: space-between;

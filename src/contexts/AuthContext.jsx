@@ -3,7 +3,6 @@ import { AuthContext } from "./authContext";
 import {
   getCurrentSupabaseSession,
   getSupabaseAccessToken,
-  loginWithPassword,
   logoutSupabaseSession,
   observeSupabaseSession,
   requestEmailOtp,
@@ -53,13 +52,6 @@ export function AuthProvider({ children }) {
     return nextSession;
   }, []);
 
-  const loginPassword = useCallback(async (email, password) => {
-    const nextSession = await loginWithPassword(email, password);
-    setSession(nextSession);
-    setAuthStatus("authenticated");
-    return nextSession;
-  }, []);
-
   const logout = useCallback(async () => {
     await logoutSupabaseSession();
     setSession(null);
@@ -77,7 +69,6 @@ export function AuthProvider({ children }) {
       session,
       requestOtp,
       verifyOtp,
-      loginPassword,
       logout,
       getAccessToken,
     }),
@@ -86,7 +77,6 @@ export function AuthProvider({ children }) {
       session,
       requestOtp,
       verifyOtp,
-      loginPassword,
       logout,
       getAccessToken,
     ]

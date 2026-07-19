@@ -75,6 +75,7 @@ const ModuloPagos = ({ data }) => {
   const [dialog, setDialog] = useState(EMPTY_DIALOG);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null);
+  const selectedPeriod = paymentForm.period;
 
   useEffect(() => {
     setStatement(data);
@@ -83,6 +84,17 @@ const ModuloPagos = ({ data }) => {
     setMessage(null);
   }, [data]);
 
+  useEffect(() => {
+    if (!selectedPeriod) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape" && !busy) setPaymentForm(EMPTY_FORM);
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [selectedPeriod, busy]);
+
   const months = useMemo(
     () => (Array.isArray(statement?.months) ? statement.months : []),
     [statement]
@@ -90,7 +102,6 @@ const ModuloPagos = ({ data }) => {
   const summary = statement?.summary ?? {};
   const elementId = statement?.["ID Elemento"];
   const elementName = statement?.["Nombre Elemento"] || "Elemento";
-  const selectedPeriod = paymentForm.period;
 
   const visibleMonths = useMemo(
     () =>
@@ -231,41 +242,43 @@ const ModuloPagos = ({ data }) => {
 
   return (
     <div className="pagos-container">
-      <div className="module-header payments-module-header">
-        <div>
-          <span>Mensualidades {statement.year}</span>
-          <div className="payments-title-row">
-            <h2 className="pagos-titulo">Estado de cuenta</h2>
-            <span
-              className="info-tooltip"
-              tabIndex={0}
-              aria-label={PAYMENT_HELP_TEXT}
-            >
-              <Info aria-hidden="true" />
-              <span className="info-tooltip__content" role="tooltip">
-                {PAYMENT_HELP_TEXT}
+      <section className="payments-section payments-section--summary">
+        <div className="module-header payments-module-header">
+          <div>
+            <span>Mensualidades {statement.year}</span>
+            <div className="payments-title-row">
+              <h2 className="pagos-titulo">Estado de cuenta</h2>
+              <span
+                className="info-tooltip"
+                tabIndex={0}
+                aria-label={PAYMENT_HELP_TEXT}
+              >
+                <Info aria-hidden="true" />
+                <span className="info-tooltip__content" role="tooltip">
+                  {PAYMENT_HELP_TEXT}
+                </span>
               </span>
-            </span>
+            </div>
           </div>
         </div>
-      </div>
 
-      <section className="payments-summary" aria-label="Resumen de pagos">
-        <div>
-          <span>Inicio de cobro</span>
-          <strong>{formatDate(statement.billingStartOn)}</strong>
-        </div>
-        <div>
-          <span>Adeudo actual</span>
-          <strong>{formatCurrency(summary.totalDue)}</strong>
-        </div>
-        <div>
-          <span>Vencidas</span>
-          <strong>{summary.overdueCount ?? 0}</strong>
-        </div>
-        <div>
-          <span>Pagadas</span>
-          <strong>{summary.paidCount ?? 0}</strong>
+        <div className="payments-summary" aria-label="Resumen de pagos">
+          <div>
+            <span>Inicio de cobro</span>
+            <strong>{formatDate(statement.billingStartOn)}</strong>
+          </div>
+          <div>
+            <span>Adeudo actual</span>
+            <strong>{formatCurrency(summary.totalDue)}</strong>
+          </div>
+          <div>
+            <span>Vencidas</span>
+            <strong>{summary.overdueCount ?? 0}</strong>
+          </div>
+          <div>
+            <span>Pagadas</span>
+            <strong>{summary.paidCount ?? 0}</strong>
+          </div>
         </div>
       </section>
 
@@ -273,136 +286,174 @@ const ModuloPagos = ({ data }) => {
         <StatusMessage variant={message.variant}>{message.text}</StatusMessage>
       )}
 
-      {selectedPeriod && (
-        <section className="payment-entry-panel" aria-label="Registrar pago">
+      <section className="payments-section payments-section--ledger" aria-label="Mensualidades">
+        <div className="payments-section__header">
           <div>
-            <span>Registrar pago</span>
-            <strong>{getPeriodLabel(selectedPeriod)}</strong>
-            <small>
-              Importe: {formatCurrency(selectedPeriod.amount, selectedPeriod.currency)}
-            </small>
+            <span>Detalle mensual</span>
+            <h3>Mensualidades</h3>
           </div>
-
-          <label>
-            Método
-            <select
-              value={paymentForm.method}
-              onChange={(event) =>
-                setPaymentForm((current) => ({
-                  ...current,
-                  method: event.target.value,
-                  reference: event.target.value === "cash" ? "" : current.reference,
-                }))
-              }
-              disabled={busy}
-            >
-              <option value="cash">Efectivo</option>
-              <option value="transfer">Transferencia</option>
-            </select>
-          </label>
-
-          <label>
-            Referencia
-            <input
-              type="text"
-              value={paymentForm.reference}
-              onChange={(event) =>
-                setPaymentForm((current) => ({
-                  ...current,
-                  reference: event.target.value,
-                }))
-              }
-              placeholder={
-                paymentForm.method === "transfer"
-                  ? "Folio, cuenta o comprobante"
-                  : "Opcional"
-              }
-              disabled={busy || paymentForm.method === "cash"}
-            />
-          </label>
-
-          <div className="payment-entry-panel__actions">
-            <button
-              type="button"
-              className="btn-cancelar"
-              onClick={closePaymentForm}
-              disabled={busy}
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              className="btn-guardar"
-              onClick={handleRegisterPayment}
-              disabled={busy}
-            >
-              {busy ? "Registrando..." : "Registrar"}
-            </button>
-          </div>
-        </section>
-      )}
-
-      <section className="payments-ledger" aria-label="Mensualidades">
-        <div className="payments-ledger__header">
-          <span>Mensualidad</span>
-          <span>Pago</span>
-          <span>Importe</span>
-          <span>Acción</span>
         </div>
 
-        {visibleMonths.map((month) => {
-          const paymentState = getPaymentState(month);
+        <div className="payments-ledger">
+          <div className="payments-ledger__header">
+            <span>Mensualidad</span>
+            <span>Pago</span>
+            <span>Importe</span>
+            <span>Acción</span>
+          </div>
 
-          return (
-            <article
-              className={`payment-row ${paymentState.rowClass}`}
-              key={`${month.year}-${month.month}`}
-            >
-              <div className="payment-row__period">
-                <strong>{getPeriodLabel(month)}</strong>
-                {month.latestCancellation && (
-                  <small>Última cancelación registrada</small>
-                )}
-              </div>
+          {visibleMonths.map((month) => {
+            const paymentState = getPaymentState(month);
 
-              <div>
-                <span className={`payment-status payment-status--${paymentState.key}`}>
-                  {paymentState.label}
-                </span>
-              </div>
+            return (
+              <article
+                className={`payment-row ${paymentState.rowClass}`}
+                key={`${month.year}-${month.month}`}
+              >
+                <div className="payment-row__period">
+                  <strong>{getPeriodLabel(month)}</strong>
+                  {month.latestCancellation && (
+                    <small>Última cancelación registrada</small>
+                  )}
+                </div>
 
-              <div className="payment-row__amount">
-                {month.status === "unconfigured"
-                  ? "Sin tarifa"
-                  : formatCurrency(month.amount, month.currency)}
-              </div>
+                <div>
+                  <span className={`payment-status payment-status--${paymentState.key}`}>
+                    {paymentState.label}
+                  </span>
+                </div>
 
-              <div className="payment-row__actions">
-                {month.isPayable && (
-                  <button
-                    type="button"
-                    className="btn-payment-action"
-                    onClick={() => openPaymentForm(month)}
-                    disabled={busy}
-                  >
-                    + Pago
-                  </button>
-                )}
-                {month.payment && (
-                  <button
-                    type="button"
-                    className="btn-eliminar"
-                    onClick={() => openCancelDialog(month.payment)}
-                    disabled={busy}
-                  >
-                    Cancelar
-                  </button>
-                )}
-              </div>
-            </article>
-          );
-        })}
+                <div className="payment-row__amount">
+                  {month.status === "unconfigured"
+                    ? "Sin tarifa"
+                    : formatCurrency(month.amount, month.currency)}
+                </div>
+
+                <div className="payment-row__actions">
+                  {month.isPayable && (
+                    <button
+                      type="button"
+                      className="btn-payment-action"
+                      onClick={() => openPaymentForm(month)}
+                      disabled={busy}
+                    >
+                      + Pago
+                    </button>
+                  )}
+                  {month.payment && (
+                    <button
+                      type="button"
+                      className="btn-eliminar"
+                      onClick={() => openCancelDialog(month.payment)}
+                      disabled={busy}
+                    >
+                      Cancelar
+                    </button>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+        </div>
       </section>
+
+      {selectedPeriod && (
+        <div
+          className="payment-sheet-overlay"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closePaymentForm();
+          }}
+        >
+          <section
+            className="payment-entry-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="payment-entry-title"
+          >
+            <div className="payment-entry-sheet__header">
+              <div>
+                <span>Registrar pago</span>
+                <h3 id="payment-entry-title">{getPeriodLabel(selectedPeriod)}</h3>
+              </div>
+              <strong>
+                {formatCurrency(selectedPeriod.amount, selectedPeriod.currency)}
+              </strong>
+            </div>
+
+            <div className="payment-method-choice" role="group" aria-label="Método de pago">
+              <button
+                type="button"
+                className={paymentForm.method === "cash" ? "active" : ""}
+                onClick={() =>
+                  setPaymentForm((current) => ({
+                    ...current,
+                    method: "cash",
+                    reference: "",
+                  }))
+                }
+                disabled={busy}
+                aria-pressed={paymentForm.method === "cash"}
+              >
+                Efectivo
+              </button>
+              <button
+                type="button"
+                className={paymentForm.method === "transfer" ? "active" : ""}
+                onClick={() =>
+                  setPaymentForm((current) => ({
+                    ...current,
+                    method: "transfer",
+                  }))
+                }
+                disabled={busy}
+                aria-pressed={paymentForm.method === "transfer"}
+              >
+                Transferencia
+              </button>
+            </div>
+
+            <label className="payment-reference-field">
+              Referencia
+              <input
+                type="text"
+                value={paymentForm.reference}
+                onChange={(event) =>
+                  setPaymentForm((current) => ({
+                    ...current,
+                    reference: event.target.value,
+                  }))
+                }
+                placeholder={
+                  paymentForm.method === "transfer"
+                    ? "Folio, cuenta o comprobante"
+                    : "Opcional"
+                }
+                disabled={busy || paymentForm.method === "cash"}
+              />
+            </label>
+
+            <div className="payment-entry-sheet__actions">
+              <button
+                type="button"
+                className="btn-cancelar"
+                onClick={closePaymentForm}
+                disabled={busy}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn-guardar"
+                onClick={handleRegisterPayment}
+                disabled={busy}
+              >
+                {busy ? "Registrando..." : "Registrar pago"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
 
       <ConfirmDialog
         open={dialog.visible}

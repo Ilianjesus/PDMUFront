@@ -88,22 +88,6 @@ export async function verifyEmailOtp(email, token) {
   return normalizeSupabaseSession(data.session);
 }
 
-export async function loginWithPassword(email, password) {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: normalizeEmail(email),
-    password,
-  });
-
-  if (error || !data.session) {
-    throw normalizeAuthError(
-      error,
-      "El correo o la contraseña no son válidos."
-    );
-  }
-
-  return normalizeSupabaseSession(data.session);
-}
-
 export async function logoutSupabaseSession() {
   const { error } = await supabase.auth.signOut({ scope: "local" });
 

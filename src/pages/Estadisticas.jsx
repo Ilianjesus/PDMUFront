@@ -230,17 +230,15 @@ export function Estadisticas() {
           eyebrow="Análisis"
           title="Estadísticas"
           infoTooltip="Indicadores históricos para revisar pagos, asistencia e inscripciones por periodo."
-          actions={
-            <button
-              type="button"
-              className="statistics-refresh-button"
-              onClick={loadStatistics}
-              disabled={loading}
-              aria-label="Actualizar estadísticas"
-            >
-              <RefreshCw aria-hidden="true" />
-            </button>
-          }
+          menuActions={[
+            {
+              id: "statistics-refresh",
+              label: loading ? "Actualizando" : "Actualizar",
+              icon: RefreshCw,
+              onSelect: loadStatistics,
+              disabled: loading,
+            },
+          ]}
         />
 
         <section className="statistics-control-panel" aria-label="Filtros de estadísticas">

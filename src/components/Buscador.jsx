@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { X } from "lucide-react";
 import { searchElements } from "../services/elementsService";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import "../styles/Buscador.css";
@@ -99,6 +100,18 @@ const Buscador = ({
         onChange={(e) => setQuery(e.target.value)}
         className="buscador-input"
       />
+
+      {query && (
+        <button
+          type="button"
+          className="buscador-clear"
+          onClick={clearSearch}
+          aria-label="Limpiar búsqueda"
+          title="Limpiar búsqueda"
+        >
+          <X aria-hidden="true" />
+        </button>
+      )}
 
       {loading && <p className="buscador-loading">Cargando resultados...</p>}
 
