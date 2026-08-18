@@ -455,7 +455,7 @@ const ModuloAsistencias = ({ data }) => {
                           <td>{record.FechaHora}</td>
                           <td>{record.Estado}{isCancelled ? " · Cancelada" : ""}</td>
                           <td>{record.Tipo}</td>
-                          <td>{record.activityName || record.sessionId || "Registro legacy"}</td>
+                          <td>{record.activityName || record.sessionId || "Sin actividad asociada"}</td>
                           <td>
                             <div className="attendance-actions">
                               <button

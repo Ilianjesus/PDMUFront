@@ -1,31 +1,15 @@
 import { useState, useEffect } from "react";
 import { StatusMessage } from "./ui/StatusMessage";
-import { Info } from "lucide-react";
+import { Info, Pencil, Upload } from "lucide-react";
+import { BirthDateSelector } from "./ui/BirthDateSelector";
+import { ConfirmDialog } from "./ui/ConfirmDialog";
+import {
+  setElementSelfTutor,
+  updateElementField,
+  uploadElementDocument,
+} from "../services/elementsService";
+import { calculateAge } from "../utils/elementGroups";
 import "../styles/ModuloInfo.css";
-
-function unsupportedSupabaseWrite() {
-  return Promise.resolve({
-    ok: false,
-    code: "UNSUPPORTED_OPERATION",
-    message:
-      "La edición de expediente y documentos aún no está habilitada en Supabase.",
-  });
-}
-
-const EditIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M12 20h9" />
-    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
-  </svg>
-);
-
-const UploadIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-    <polyline points="17 8 12 3 7 8"/>
-    <line x1="12" y1="3" x2="12" y2="15"/>
-  </svg>
-);
 
 function formatDate(value) {
   if (!value) return "Sin fecha";
@@ -36,7 +20,17 @@ function formatDate(value) {
   }).format(date);
 }
 
-const ModuloInfo = ({ data, readOnly = false }) => {
+function blurActiveControl() {
+  const activeElement = document.activeElement;
+  if (
+    activeElement instanceof HTMLElement &&
+    ["INPUT", "SELECT", "TEXTAREA"].includes(activeElement.tagName)
+  ) {
+    activeElement.blur();
+  }
+}
+
+const ModuloInfo = ({ data, readOnly = false, onDataChange }) => {
   const [form, setForm] = useState({});
   const [editingField, setEditingField] = useState(null);
   const [originalValue, setOriginalValue] = useState(null);
@@ -44,6 +38,12 @@ const ModuloInfo = ({ data, readOnly = false }) => {
   const [selectedFiles, setSelectedFiles] = useState({});
   const [uploading, setUploading] = useState(null);
   const [savingField, setSavingField] = useState(null);
+  const [savingSelfTutor, setSavingSelfTutor] = useState(false);
+  const [selfTutorDialog, setSelfTutorDialog] = useState({
+    visible: false,
+    guardianName: "",
+    guardianPhone: "",
+  });
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingField, setPendingField] = useState(null);
@@ -58,6 +58,12 @@ const ModuloInfo = ({ data, readOnly = false }) => {
     setSelectedFiles({});
     setUploading(null);
     setSavingField(null);
+    setSavingSelfTutor(false);
+    setSelfTutorDialog({
+      visible: false,
+      guardianName: "",
+      guardianPhone: "",
+    });
     setMessage(null);
   }, [data]);
 
@@ -88,6 +94,13 @@ const ModuloInfo = ({ data, readOnly = false }) => {
     if (readOnly) return;
     if (editingField && editingField !== name) return;
     if (savingField) return;
+    if (name === "Tutor" && form.IsSelfTutor) {
+      setMessage({
+        variant: "info",
+        text: "El nombre del tutor se sincroniza con el elemento porque está marcado como propio tutor.",
+      });
+      return;
+    }
 
     setEditingField(name);
     setOriginalValue(form[name] ?? "");
@@ -116,6 +129,7 @@ const ModuloInfo = ({ data, readOnly = false }) => {
       });
       return;
     }
+    blurActiveControl();
     setPendingField(name);
     setShowConfirmModal(true);
   };
@@ -127,9 +141,17 @@ const ModuloInfo = ({ data, readOnly = false }) => {
       setSavingField(pendingField);
       setMessage(null);
 
-      const result = await unsupportedSupabaseWrite();
+      const result = await updateElementField({
+        elementId: form.ID,
+        field: pendingField,
+        value: form[pendingField],
+      });
 
       if (!result.ok) throw new Error(result.message);
+      const updatedData = result.data || form;
+
+      setForm(updatedData);
+      onDataChange?.(updatedData);
 
       setEditingField(null);
       setOriginalValue(null);
@@ -162,7 +184,11 @@ const ModuloInfo = ({ data, readOnly = false }) => {
       return;
     }
 
-    if (isValidDocumentLink(form[field])) {
+    if (file.size > 10 * 1024 * 1024) {
+      setMessage({
+        variant: "error",
+        text: "El documento no debe superar 10 MB.",
+      });
       return;
     }
 
@@ -179,23 +205,24 @@ const ModuloInfo = ({ data, readOnly = false }) => {
     });
   };
 
-  const confirmUpload = async (field) => {
+  const confirmUpload = async (field, documentType) => {
     const file = selectedFiles[field];
-    if (!file || isValidDocumentLink(form[field])) return;
+    if (!file) return;
 
     try {
       setUploading(field);
       setMessage(null);
-      const result = await unsupportedSupabaseWrite();
+      const result = await uploadElementDocument({
+        elementId: form.ID,
+        documentType,
+        file,
+      });
 
       if (!result.ok) throw new Error(result.message);
+      const updatedData = result.data || form;
 
-      const fileUrl = result.data.url;
-
-      setForm((prev) => ({
-        ...prev,
-        [field]: fileUrl,
-      }));
+      setForm(updatedData);
+      onDataChange?.(updatedData);
 
       setSelectedFiles((prev) => {
         const updated = { ...prev };
@@ -217,6 +244,114 @@ const ModuloInfo = ({ data, readOnly = false }) => {
     }
   };
 
+  const applyUpdatedElement = (updatedData) => {
+    setForm(updatedData);
+    onDataChange?.(updatedData);
+  };
+
+  const handleEnableSelfTutor = async () => {
+    try {
+      setSavingSelfTutor(true);
+      setMessage(null);
+
+      const result = await setElementSelfTutor({
+        elementId: form.ID,
+        enabled: true,
+      });
+
+      if (!result.ok) throw new Error(result.message);
+      applyUpdatedElement(result.data || form);
+      setMessage({
+        variant: "success",
+        text: result.message || "El elemento quedó marcado como su propio tutor.",
+      });
+    } catch (error) {
+      console.error("Error marcando propio tutor:", error);
+      setMessage({
+        variant: "error",
+        text: error?.message || "No se pudo marcar como propio tutor.",
+      });
+    } finally {
+      setSavingSelfTutor(false);
+    }
+  };
+
+  const openSelfTutorDialog = () => {
+    setSelfTutorDialog({
+      visible: true,
+      guardianName: "",
+      guardianPhone: "",
+    });
+  };
+
+  const closeSelfTutorDialog = () => {
+    if (savingSelfTutor) return;
+    setSelfTutorDialog({
+      visible: false,
+      guardianName: "",
+      guardianPhone: "",
+    });
+  };
+
+  const handleSelfTutorDialogChange = (field, value) => {
+    setSelfTutorDialog((current) => ({
+      ...current,
+      [field]:
+        field === "guardianPhone"
+          ? value.replace(/\D/g, "").slice(0, 10)
+          : value,
+    }));
+  };
+
+  const confirmDisableSelfTutor = async () => {
+    if (!selfTutorDialog.guardianName.trim()) {
+      setMessage({
+        variant: "error",
+        text: "Captura el nombre del nuevo tutor.",
+      });
+      return;
+    }
+    if (!/^\d{10}$/.test(selfTutorDialog.guardianPhone)) {
+      setMessage({
+        variant: "error",
+        text: "El teléfono del nuevo tutor debe contener exactamente 10 dígitos.",
+      });
+      return;
+    }
+
+    try {
+      setSavingSelfTutor(true);
+      setMessage(null);
+
+      const result = await setElementSelfTutor({
+        elementId: form.ID,
+        enabled: false,
+        guardianName: selfTutorDialog.guardianName,
+        guardianPhone: selfTutorDialog.guardianPhone,
+      });
+
+      if (!result.ok) throw new Error(result.message);
+      applyUpdatedElement(result.data || form);
+      setSelfTutorDialog({
+        visible: false,
+        guardianName: "",
+        guardianPhone: "",
+      });
+      setMessage({
+        variant: "success",
+        text: result.message || "Se asignó un nuevo tutor correctamente.",
+      });
+    } catch (error) {
+      console.error("Error desmarcando propio tutor:", error);
+      setMessage({
+        variant: "error",
+        text: error?.message || "No se pudo asignar el nuevo tutor.",
+      });
+    } finally {
+      setSavingSelfTutor(false);
+    }
+  };
+
   const isValidDocumentLink = (value) => {
     return (
       typeof value === "string" &&
@@ -226,12 +361,32 @@ const ModuloInfo = ({ data, readOnly = false }) => {
     );
   };
 
+  const getDocumentRecord = (type) => {
+    const documents = Array.isArray(form.documents) ? form.documents : [];
+    return (
+      documents.find((document) => document.type === type && document.status === "active") ||
+      documents.find((document) => document.type === type) ||
+      null
+    );
+  };
+
+  const getDocumentUrl = (field, document) => {
+    return (
+      document?.downloadUrl ||
+      document?.driveUrl ||
+      document?.url ||
+      form[field] ||
+      ""
+    );
+  };
+
   const personalFields = [
     ["Nombres", "Nombre(s)"],
     ["ApellidoPaterno", "Apellido paterno"],
     ["ApellidoMaterno", "Apellido materno"],
     ["Enfermedades", "Enfermedades"],
     ["FechaNacimiento", "Fecha de nacimiento"],
+    ["Sexo", "Sexo"],
   ];
 
   const tutorFields = [
@@ -240,48 +395,129 @@ const ModuloInfo = ({ data, readOnly = false }) => {
   ];
 
   const documentFields = [
-    ["ineTutor", "INE del tutor"],
-    ["certificadoMedico", "Certificado médico"],
-    ["comprobanteDomicilio", "Comprobante de domicilio"],
-    ["actaNacimiento", "Acta de nacimiento"],
-    ["curp", "CURP"],
-    ["hojaInscripcion", "Hoja de inscripción"],
+    {
+      field: "ineTutor",
+      type: "guardian_id",
+      label: "INE del tutor",
+      placeholder: "PDF requerido para validar identidad del tutor.",
+    },
+    {
+      field: "certificadoMedico",
+      type: "medical_certificate",
+      label: "Certificado médico",
+      placeholder: "PDF requerido para validar estado médico.",
+    },
+    {
+      field: "comprobanteDomicilio",
+      type: "proof_of_address",
+      label: "Comprobante de domicilio",
+      placeholder: "PDF requerido para domicilio.",
+    },
+    {
+      field: "actaNacimiento",
+      type: "birth_certificate",
+      label: "Acta de nacimiento",
+      placeholder: "PDF requerido para identidad del elemento.",
+    },
+    {
+      field: "curp",
+      type: "curp",
+      label: "CURP",
+      placeholder: "PDF requerido de CURP.",
+    },
+    {
+      field: "hojaInscripcion",
+      type: "enrollment_form",
+      label: "Hoja de inscripción",
+      placeholder: "PDF requerido de inscripción firmada.",
+    },
   ];
 
   const enrollments = Array.isArray(form.enrollments) ? form.enrollments : [];
+  const isAdult = calculateAge(form.FechaNacimiento) >= 18;
+  const selfTutorHint = form.IsSelfTutor
+    ? "Tutor sincronizado"
+    : isAdult
+    ? "Tutor independiente"
+    : "Solo mayores de edad";
+
+  const handleSelfTutorToggle = (checked) => {
+    if (checked) {
+      handleEnableSelfTutor();
+      return;
+    }
+
+    openSelfTutorDialog();
+  };
 
   const renderEditableField = ([name, label]) => {
     const isEditing = editingField === name;
     const isSavingThisField = savingField === name;
+    const isBirthDate = name === "FechaNacimiento";
+    const isSex = name === "Sexo";
+    const isSelfTutorName = name === "Tutor" && form.IsSelfTutor;
+    const displayValue =
+      isSex && !isEditing
+        ? form[name] === "F"
+          ? "Femenino"
+          : form[name] === "M"
+            ? "Masculino"
+            : form[name] || ""
+        : form[name] || "";
 
     return (
       <div className="form-group" key={name}>
         <label htmlFor={`field-${name}`}>{label}</label>
 
         <div className="field-edit-block">
-          <div className="input-wrapper">
-            <input
+          {isBirthDate && isEditing ? (
+            <BirthDateSelector
+              value={form[name] || ""}
+              onChange={(value) =>
+                setForm((current) => ({
+                  ...current,
+                  [name]: value,
+                }))
+              }
+              disabled={!!savingField}
+            />
+          ) : isSex && isEditing ? (
+            <select
               id={`field-${name}`}
-              type={name === "FechaNacimiento" ? "date" : "text"}
               name={name}
               value={form[name] || ""}
               onChange={handleChange}
-              disabled={!isEditing || !!savingField}
-              className={`input ${isEditing ? "input-active" : "input-readonly"}`}
-            />
+              disabled={!!savingField}
+              className="input input-active"
+            >
+              <option value="M">Masculino</option>
+              <option value="F">Femenino</option>
+            </select>
+          ) : (
+            <div className="input-wrapper">
+              <input
+                id={`field-${name}`}
+                type="text"
+                name={name}
+                value={displayValue}
+                onChange={handleChange}
+                disabled={!isEditing || !!savingField}
+                className={`input ${isEditing ? "input-active" : "input-readonly"}`}
+              />
 
-            {!readOnly && !isEditing && (
-              <button
-                type="button"
-                className="edit-icon-btn"
-                onClick={() => startEditing(name)}
-                disabled={!!savingField}
-                aria-label={`Editar ${label}`}
-              >
-                <EditIcon />
-              </button>
-            )}
-          </div>
+              {!readOnly && !isEditing && !isSelfTutorName && (
+                <button
+                  type="button"
+                  className="edit-icon-btn"
+                  onClick={() => startEditing(name)}
+                  disabled={!!savingField}
+                  aria-label={`Editar ${label}`}
+                >
+                  <Pencil aria-hidden="true" />
+                </button>
+              )}
+            </div>
+          )}
 
           {isEditing && (
             <div className="field-action-row">
@@ -319,14 +555,14 @@ const ModuloInfo = ({ data, readOnly = false }) => {
               tabIndex={0}
               aria-label={
                 readOnly
-                  ? "Consulta en modo lectura. La edición y los documentos se habilitarán en una fase posterior."
+                  ? "Consulta en modo lectura."
                   : "Edita un campo a la vez para mantener un control claro de los cambios."
               }
             >
               <Info aria-hidden="true" />
               <span className="info-tooltip__content" role="tooltip">
                 {readOnly
-                  ? "Consulta en modo lectura. La edición y los documentos se habilitarán en una fase posterior."
+                  ? "Consulta en modo lectura."
                   : "Edita un campo a la vez para mantener un control claro de los cambios."}
               </span>
             </span>
@@ -357,10 +593,6 @@ const ModuloInfo = ({ data, readOnly = false }) => {
           </div>
           <div className="info-fields-grid">
             {personalFields.map(renderEditableField)}
-            <div className="form-group">
-              <label htmlFor="field-Sexo">Sexo</label>
-              <input id="field-Sexo" type="text" value={form.Sexo || ""} disabled className="input input-readonly" />
-            </div>
           </div>
         </section>
 
@@ -381,6 +613,31 @@ const ModuloInfo = ({ data, readOnly = false }) => {
             </div>
           </div>
           <div className="info-fields-grid">
+            <div className={`self-tutor-control ${form.IsSelfTutor ? "is-active" : ""}`}>
+              <div className="self-tutor-control__text">
+                <span>Propio tutor</span>
+                <strong>{form.IsSelfTutor ? "Sí" : "No"}</strong>
+                <p>{selfTutorHint}</p>
+              </div>
+              {!readOnly && (
+                <label
+                  className="self-tutor-switch"
+                  aria-label={
+                    form.IsSelfTutor
+                      ? "Desmarcar propio tutor"
+                      : "Marcar como propio tutor"
+                  }
+                >
+                  <input
+                    type="checkbox"
+                    checked={Boolean(form.IsSelfTutor)}
+                    onChange={(event) => handleSelfTutorToggle(event.target.checked)}
+                    disabled={savingSelfTutor || (!form.IsSelfTutor && !isAdult)}
+                  />
+                  <span aria-hidden="true" />
+                </label>
+              )}
+            </div>
             {tutorFields.map(renderEditableField)}
           </div>
         </section>
@@ -452,14 +709,14 @@ const ModuloInfo = ({ data, readOnly = false }) => {
                 tabIndex={0}
                 aria-label={
                   readOnly
-                    ? "Muestra el estado de los documentos registrados. La carga y descarga se habilitará después."
+                    ? "Muestra el estado de los documentos registrados."
                     : "Consulta documentos cargados o completa los faltantes."
                 }
               >
                 <Info aria-hidden="true" />
                 <span className="info-tooltip__content" role="tooltip">
                   {readOnly
-                    ? "Muestra el estado de los documentos registrados. La carga y descarga se habilitará después."
+                    ? "Muestra el estado de los documentos registrados."
                     : "Consulta documentos cargados o completa los faltantes."}
                 </span>
               </span>
@@ -485,17 +742,25 @@ const ModuloInfo = ({ data, readOnly = false }) => {
             </div>
           ) : (
           <div className="documents-grid">
-          {documentFields.map(([field, label]) => {
-          const hasDocument = isValidDocumentLink(form[field]);
+          {documentFields.map(({ field, label, placeholder, type }) => {
+          const document = getDocumentRecord(type);
+          const documentUrl = getDocumentUrl(field, document);
+          const hasDocument = isValidDocumentLink(documentUrl);
+          const isUploadingThisDocument = uploading === field;
 
           return (
             <div className="form-group document-group" key={field}>
-              <span className="document-label">{label}</span>
+              <div className="document-group__header">
+                <span className="document-label">{label}</span>
+                <span className={`document-status ${hasDocument ? "document-status--complete" : "document-status--pending"}`}>
+                  {hasDocument ? "Completo" : "Pendiente"}
+                </span>
+              </div>
 
               <div className="document-row">
                 {hasDocument ? (
                   <a
-                    href={form[field]}
+                    href={documentUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="document-link"
@@ -503,13 +768,13 @@ const ModuloInfo = ({ data, readOnly = false }) => {
                     Ver documento
                   </a>
                 ) : (
-                  <span className="document-missing">No cargado</span>
+                  <span className="document-missing">{placeholder}</span>
                 )}
 
-                {!hasDocument && !selectedFiles[field] ? (
+                {!selectedFiles[field] ? (
                   <label className="upload-btn">
-                    <UploadIcon />
-                    <span className="visually-hidden">Cargar {label}</span>
+                    <Upload aria-hidden="true" />
+                    <span>{hasDocument ? "Reemplazar" : "Subir PDF"}</span>
                     <input
                       type="file"
                       accept="application/pdf"
@@ -519,7 +784,7 @@ const ModuloInfo = ({ data, readOnly = false }) => {
                   </label>
                 ) : null}
 
-                {!hasDocument && selectedFiles[field] ? (
+                {selectedFiles[field] ? (
                   <div className="upload-confirm-box">
                     <span className="file-name">
                       {selectedFiles[field].name}
@@ -528,17 +793,17 @@ const ModuloInfo = ({ data, readOnly = false }) => {
                     <button
                       type="button"
                       className="confirm-upload"
-                      onClick={() => confirmUpload(field)}
-                      disabled={uploading === field}
+                      onClick={() => confirmUpload(field, type)}
+                      disabled={isUploadingThisDocument}
                     >
-                      {uploading === field ? "Subiendo..." : "Confirmar"}
+                      {isUploadingThisDocument ? "Subiendo..." : "Confirmar"}
                     </button>
 
                     <button
                       type="button"
                       className="cancel-upload"
                       onClick={() => cancelFile(field)}
-                      disabled={uploading === field}
+                      disabled={isUploadingThisDocument}
                     >
                       Cancelar
                     </button>
@@ -553,39 +818,58 @@ const ModuloInfo = ({ data, readOnly = false }) => {
         </section>
       </div>
 
-      {showConfirmModal && (
-        <div className="modal-overlay" role="presentation">
-          <div className="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="edit-confirm-title" aria-describedby="edit-confirm-description">
-            <h5 className="confirm-modal-title" id="edit-confirm-title">Confirmar cambios</h5>
-            <p className="confirm-modal-text" id="edit-confirm-description">
-              ¿Deseas guardar los cambios en este campo?
-            </p>
+      <ConfirmDialog
+        open={showConfirmModal}
+        title="Confirmar cambios"
+        message="Se actualizará este campo en el expediente del elemento."
+        confirmLabel="Guardar cambio"
+        busy={Boolean(savingField)}
+        onConfirm={confirmEdit}
+        onCancel={() => {
+          if (savingField) return;
+          setShowConfirmModal(false);
+          setPendingField(null);
+        }}
+      />
 
-            <div className="confirm-modal-actions">
-              <button
-                type="button"
-                className="modal-confirm-btn"
-                onClick={confirmEdit}
-                disabled={!!savingField}
-              >
-                {savingField ? "Guardando..." : "Sí, guardar"}
-              </button>
-              <button
-                type="button"
-                className="modal-cancel-btn"
-                onClick={() => {
-                  if (savingField) return;
-                  setShowConfirmModal(false);
-                  setPendingField(null);
-                }}
-                disabled={!!savingField}
-              >
-                No, volver
-              </button>
-            </div>
-          </div>
+      <ConfirmDialog
+        open={selfTutorDialog.visible}
+        title="Asignar nuevo tutor"
+        message="Al guardar, el elemento dejará de estar marcado como su propio tutor."
+        confirmLabel="Guardar tutor"
+        busy={savingSelfTutor}
+        onConfirm={confirmDisableSelfTutor}
+        onCancel={closeSelfTutorDialog}
+      >
+        <div className="self-tutor-dialog-fields">
+          <label className="self-tutor-dialog-field">
+            Nombre del tutor
+            <input
+              type="text"
+              value={selfTutorDialog.guardianName}
+              onChange={(event) =>
+                handleSelfTutorDialogChange("guardianName", event.target.value)
+              }
+              disabled={savingSelfTutor}
+              autoComplete="name"
+            />
+          </label>
+
+          <label className="self-tutor-dialog-field">
+            Teléfono del tutor
+            <input
+              type="tel"
+              inputMode="numeric"
+              value={selfTutorDialog.guardianPhone}
+              onChange={(event) =>
+                handleSelfTutorDialogChange("guardianPhone", event.target.value)
+              }
+              disabled={savingSelfTutor}
+              autoComplete="tel"
+            />
+          </label>
         </div>
-      )}
+      </ConfirmDialog>
     </div>
   );
 };

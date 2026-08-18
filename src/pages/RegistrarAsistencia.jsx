@@ -656,7 +656,7 @@ export function RegistrarAsistencia() {
               <div className="attendance-register-actions">
                 <Link
                   className="ui-button"
-                  to={`/Scanner?session=${attendanceSession.sessionId}`}
+                  to={`/scanner?session=${attendanceSession.sessionId}`}
                 >
                   <ScanLine aria-hidden="true" />
                   Escanear QR

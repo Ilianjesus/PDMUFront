@@ -10,7 +10,7 @@
   margin: 0 auto var(--space-5);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-lg);
-  background: linear-gradient(180deg, #17243a, #111d2e);
+  background: #1d252e;
   box-shadow: 0 16px 42px rgba(0, 0, 0, 0.28);
 }
 
@@ -170,7 +170,7 @@
 
 .panel-list-surface {
   overflow: hidden;
-  background: linear-gradient(180deg, #162337, #0e1928);
+  background: #171d24;
 }
 
 .panel-list-surface__header {
@@ -209,7 +209,7 @@
   max-height: calc(100vh - var(--page-header-height) - 22rem);
   overflow: auto;
   padding: var(--space-3);
-  background: #091321;
+  background: #0f1419;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -224,7 +224,7 @@
   padding: var(--space-3) var(--space-4);
   border: 1px solid rgba(190, 207, 228, 0.18);
   border-radius: var(--radius-sm);
-  background: #142136;
+  background: #1a222a;
   color: var(--color-text);
   text-align: left;
   cursor: pointer;
@@ -290,7 +290,7 @@
 
 .panel-card {
   overflow: hidden;
-  background: linear-gradient(180deg, #17243a, #111d2e);
+  background: #1d252e;
 }
 
 .panel-detail {

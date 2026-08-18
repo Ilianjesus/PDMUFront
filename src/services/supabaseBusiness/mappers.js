@@ -4,7 +4,7 @@ import {
   getElementGroup,
 } from "../../utils/elementGroups";
 
-const DOCUMENT_LEGACY_FIELDS = Object.freeze({
+const DOCUMENT_FORM_FIELDS = Object.freeze({
   guardian_id: "ineTutor",
   medical_certificate: "certificadoMedico",
   proof_of_address: "comprobanteDomicilio",
@@ -26,8 +26,12 @@ function mapDocumentMetadata(documents) {
   if (!Array.isArray(documents)) return {};
 
   return documents.reduce((fields, document) => {
-    const legacyField = DOCUMENT_LEGACY_FIELDS[document?.type];
-    if (legacyField) fields[legacyField] = "Sin documento";
+    const formField = DOCUMENT_FORM_FIELDS[document?.type];
+    const documentUrl =
+      normalizeText(document?.downloadUrl) ||
+      normalizeText(document?.driveUrl) ||
+      normalizeText(document?.url);
+    if (formField) fields[formField] = documentUrl || "Sin documento";
     return fields;
   }, {});
 }
@@ -194,6 +198,7 @@ export function mapElementSearchItem(item) {
     Grupo: groupLabel,
     Tutor: normalizeText(item.guardian_name ?? item.guardianName),
     TelefonoTutor: normalizeText(item.guardian_phone ?? item.guardianPhone),
+    IsSelfTutor: Boolean(item.is_self_tutor ?? item.isSelfTutor),
     groupCode: groupLabel || null,
     status: item.status ?? null,
     elementCode: item.element_code ?? item.elementCode ?? null,
@@ -240,6 +245,7 @@ export function mapElementDetails(payload) {
     Enfermedades: element.medicalNotes ?? "",
     Tutor: normalizeText(element.guardianName),
     TelefonoTutor: normalizeText(element.guardianPhone),
+    IsSelfTutor: Boolean(element.isSelfTutor ?? element.is_self_tutor),
     enrollmentId: element.enrollmentId ?? null,
     enrollmentCode: element.enrollmentCode ?? "",
     enrolledOn: element.enrolledOn ?? null,

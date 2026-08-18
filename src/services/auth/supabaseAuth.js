@@ -14,7 +14,10 @@ function normalizeOtpToken(token) {
 function normalizeAuthError(error, fallbackMessage) {
   const normalizedError = new Error(fallbackMessage, { cause: error });
   normalizedError.name = "SupabaseAuthError";
-  normalizedError.code = error?.code || "SUPABASE_AUTH_ERROR";
+  normalizedError.code =
+    (typeof error?.code === "string" && error.code) ||
+    error?.error_code ||
+    "SUPABASE_AUTH_ERROR";
   return normalizedError;
 }
 
@@ -56,12 +59,19 @@ export function observeSupabaseSession(onSessionChange) {
 export async function requestEmailOtp(email) {
   const normalizedEmail = normalizeEmail(email);
 
-  await supabase.auth.signInWithOtp({
+  const { error } = await supabase.auth.signInWithOtp({
     email: normalizedEmail,
     options: {
       shouldCreateUser: false,
     },
   });
+
+  if (error) {
+    throw normalizeAuthError(
+      error,
+      "No se pudo solicitar el código. Verifica la configuración de acceso."
+    );
+  }
 
   // La UI conserva una respuesta genérica para no revelar si el operador existe.
   // Supabase aplica su propia respuesta y rate limiting en la llamada de red.

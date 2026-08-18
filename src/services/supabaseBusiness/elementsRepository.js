@@ -6,8 +6,209 @@ import {
   mapElementSearchItem,
 } from "./mappers";
 import { createRequestId } from "./requestId";
+import { calculateAge, getElementGroup } from "../../utils/elementGroups";
 
 const ALLOWED_INCLUDES = new Set(["profile", "documents"]);
+const DOCUMENTS_BUCKET =
+  import.meta.env.VITE_SUPABASE_DOCUMENTS_BUCKET || "element-documents";
+const MAX_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024;
+const EDITABLE_ELEMENT_FIELDS = Object.freeze({
+  Nombres: {
+    column: "given_names",
+    required: true,
+    normalize: normalizeRequiredText,
+  },
+  ApellidoPaterno: {
+    column: "paternal_surname",
+    required: true,
+    normalize: normalizeRequiredText,
+  },
+  ApellidoMaterno: {
+    column: "maternal_surname",
+    normalize: normalizeOptionalText,
+  },
+  Enfermedades: {
+    column: "medical_notes",
+    normalize: normalizeOptionalText,
+  },
+  FechaNacimiento: {
+    column: "birth_date",
+    required: true,
+    normalize: normalizeBirthDate,
+  },
+  Sexo: {
+    column: "sex_code",
+    required: true,
+    normalize: normalizeSexCode,
+  },
+  Tutor: {
+    column: "guardian_name",
+    required: true,
+    normalize: normalizeRequiredText,
+  },
+  TelefonoTutor: {
+    column: "guardian_phone",
+    required: true,
+    normalize: normalizeGuardianPhone,
+  },
+});
+const ELEMENT_LIST_COLUMNS = Object.freeze([
+  "id",
+  "element_code",
+  "given_names",
+  "paternal_surname",
+  "maternal_surname",
+  "birth_date",
+  "sex_code",
+  "group_code",
+  "guardian_name",
+  "guardian_phone",
+  "is_self_tutor",
+  "enrolled_on",
+  "billing_start_on",
+  "billing_policy",
+  "status",
+  "created_at",
+]);
+
+function normalizeRequiredText(value) {
+  const normalized = typeof value === "string" ? value.trim() : "";
+  if (!normalized) throw new Error("Este campo es obligatorio.");
+  return normalized;
+}
+
+function normalizeOptionalText(value) {
+  const normalized = typeof value === "string" ? value.trim() : "";
+  return normalized || null;
+}
+
+function normalizeBirthDate(value) {
+  const normalized = typeof value === "string" ? value.trim() : "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    throw new Error("Captura una fecha de nacimiento válida.");
+  }
+  const date = new Date(`${normalized}T00:00:00`);
+  if (Number.isNaN(date.getTime()) || date > new Date()) {
+    throw new Error("La fecha de nacimiento no puede ser futura.");
+  }
+  return normalized;
+}
+
+function normalizeGuardianPhone(value) {
+  const normalized = String(value ?? "").replace(/\D/g, "");
+  if (!/^\d{10}$/.test(normalized)) {
+    throw new Error("El teléfono debe contener exactamente 10 dígitos.");
+  }
+  return normalized;
+}
+
+function normalizeSexCode(value) {
+  const normalized = String(value ?? "").trim().toUpperCase();
+  if (!["F", "M"].includes(normalized)) {
+    throw new Error("Selecciona un sexo válido.");
+  }
+  return normalized;
+}
+
+function getFullNameFromElement(element) {
+  return [
+    element?.given_names ?? element?.givenNames,
+    element?.paternal_surname ?? element?.paternalSurname,
+    element?.maternal_surname ?? element?.maternalSurname,
+  ]
+    .map((part) => (typeof part === "string" ? part.trim() : ""))
+    .filter(Boolean)
+    .join(" ");
+}
+
+function safeFileName(fileName) {
+  const normalized = String(fileName || "documento.pdf")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  return normalized || "documento.pdf";
+}
+
+function getStorageObjectPath(document) {
+  const value = document?.drive_file_id ?? document?.driveFileId ?? "";
+  const prefix = `storage:${DOCUMENTS_BUCKET}/`;
+  if (typeof value !== "string" || !value.startsWith(prefix)) return "";
+  return value.slice(prefix.length);
+}
+
+async function createDocumentAccessUrl(document) {
+  const directUrl = document?.drive_url ?? document?.driveUrl ?? "";
+  if (directUrl) return directUrl;
+
+  const objectPath = getStorageObjectPath(document);
+  if (!objectPath) return "";
+
+  const { data, error } = await supabase.storage
+    .from(DOCUMENTS_BUCKET)
+    .createSignedUrl(objectPath, 60 * 10);
+
+  if (error) return "";
+  return data?.signedUrl || "";
+}
+
+async function loadElementDocumentsWithUrls(elementId) {
+  const { data, error } = await supabase
+    .from("element_documents")
+    .select(
+      [
+        "id",
+        "document_type",
+        "drive_file_id",
+        "drive_url",
+        "original_filename",
+        "mime_type",
+        "size_bytes",
+        "status",
+        "version",
+        "uploaded_at",
+      ].join(",")
+    )
+    .eq("element_id", elementId)
+    .in("status", ["active", "replaced"])
+    .order("document_type", { ascending: true })
+    .order("version", { ascending: false });
+
+  if (error || !Array.isArray(data)) return null;
+
+  return Promise.all(
+    data.map(async (document) => {
+      const downloadUrl = await createDocumentAccessUrl(document);
+      return {
+        documentId: document.id,
+        type: document.document_type,
+        fileName: document.original_filename,
+        mimeType: document.mime_type,
+        sizeBytes: document.size_bytes,
+        status: document.status,
+        version: document.version,
+        uploadedAt: document.uploaded_at,
+        downloadUrl,
+        driveUrl: document.drive_url || "",
+      };
+    })
+  );
+}
+
+async function loadElementProfileExtras(elementId) {
+  const { data, error } = await supabase
+    .from("elements")
+    .select("is_self_tutor")
+    .eq("id", elementId)
+    .single();
+
+  if (error) return {};
+
+  return {
+    isSelfTutor: Boolean(data?.is_self_tutor),
+  };
+}
 
 function validationError(message, fieldErrors = {}) {
   return {
@@ -88,37 +289,24 @@ export async function listElementsSupabase({
     return validationError("El estado solicitado no es válido.");
   }
 
-  let query = supabase
-    .from("elements")
-    .select(
-      [
-        "id",
-        "element_code",
-        "given_names",
-        "paternal_surname",
-        "maternal_surname",
-        "birth_date",
-        "sex_code",
-        "group_code",
-        "guardian_name",
-        "guardian_phone",
-        "enrolled_on",
-        "billing_start_on",
-        "billing_policy",
-        "status",
-        "created_at",
-      ].join(",")
-    )
-    .order("given_names", { ascending: true })
-    .order("paternal_surname", { ascending: true })
-    .order("maternal_surname", { ascending: true })
-    .limit(limit);
+  const createListQuery = (columns) => {
+    let query = supabase
+      .from("elements")
+      .select(columns.join(","))
+      .order("given_names", { ascending: true })
+      .order("paternal_surname", { ascending: true })
+      .order("maternal_surname", { ascending: true })
+      .limit(limit);
 
-  if (status !== null) {
-    query = query.eq("status", status);
-  }
+    if (status !== null) {
+      query = query.eq("status", status);
+    }
 
-  const { data, error } = await query;
+    return query;
+  };
+
+  const { data, error } = await createListQuery(ELEMENT_LIST_COLUMNS);
+
   if (error) {
     return {
       ok: false,
@@ -181,9 +369,319 @@ export async function getElementSupabase({
     return invalidResponse("Supabase no devolvió un expediente válido.", result.raw);
   }
 
+  const documentsWithUrls = include.includes("documents")
+    ? await loadElementDocumentsWithUrls(normalizedElementId)
+    : null;
+  const profileExtras = await loadElementProfileExtras(normalizedElementId);
+  const normalizedElement = mapElementDetails({
+    ...result.data,
+    element: {
+      ...result.data.element,
+      ...profileExtras,
+    },
+    ...(documentsWithUrls ? { documents: documentsWithUrls } : {}),
+  });
+
   return {
     ...result,
-    data: element,
+    data: normalizedElement,
+  };
+}
+
+export async function updateElementFieldSupabase({
+  elementId,
+  field,
+  value,
+} = {}) {
+  const normalizedElementId =
+    typeof elementId === "string" ? elementId.trim() : "";
+  const fieldConfig = EDITABLE_ELEMENT_FIELDS[field];
+
+  if (!normalizedElementId) return validationError("Selecciona un elemento válido.");
+  if (!fieldConfig) return validationError("El campo no se puede editar desde esta vista.");
+
+  let normalizedValue;
+  try {
+    normalizedValue = fieldConfig.normalize(value);
+  } catch (error) {
+    return validationError(error.message, { [field]: error.message });
+  }
+
+  const updatePayload = {
+    [fieldConfig.column]: normalizedValue,
+  };
+
+  const { data: current, error: currentError } = await supabase
+    .from("elements")
+    .select("given_names, paternal_surname, maternal_surname, birth_date, sex_code, is_self_tutor")
+    .eq("id", normalizedElementId)
+    .single();
+
+  if (currentError) {
+    return {
+      ok: false,
+      code: currentError.code || "SUPABASE_QUERY_ERROR",
+      message: "No se pudo validar el expediente del elemento.",
+      raw: currentError,
+    };
+  }
+
+  if (field === "Tutor" && current?.is_self_tutor) {
+    return validationError(
+      "Para cambiar el tutor, primero desmarca la opción de propio tutor."
+    );
+  }
+
+  if (field === "FechaNacimiento") {
+    if (current?.is_self_tutor && calculateAge(normalizedValue) < 18) {
+      return validationError(
+        "Un elemento menor de edad no puede quedar marcado como su propio tutor."
+      );
+    }
+    updatePayload.group_code =
+      getElementGroup({
+        birthDate: normalizedValue,
+        sex: current?.sex_code,
+      })?.label ?? null;
+  }
+
+  if (field === "Sexo") {
+    updatePayload.group_code =
+      getElementGroup({
+        birthDate: current?.birth_date,
+        sex: normalizedValue,
+      })?.label ?? null;
+  }
+
+  if (
+    current?.is_self_tutor &&
+    ["Nombres", "ApellidoPaterno", "ApellidoMaterno"].includes(field)
+  ) {
+    updatePayload.guardian_name = getFullNameFromElement({
+      ...current,
+      [fieldConfig.column]: normalizedValue,
+    });
+  }
+
+  const { error } = await supabase
+    .from("elements")
+    .update(updatePayload)
+    .eq("id", normalizedElementId);
+
+  if (error) {
+    return {
+      ok: false,
+      code: error.code || "SUPABASE_UPDATE_ERROR",
+      message: "No se pudo actualizar el expediente en Supabase.",
+      raw: error,
+    };
+  }
+
+  const refreshed = await getElementSupabase({
+    elementId: normalizedElementId,
+    include: ["profile", "documents"],
+  });
+
+  return {
+    ...refreshed,
+    message: "Campo actualizado correctamente.",
+  };
+}
+
+export async function setElementSelfTutorSupabase({
+  elementId,
+  enabled,
+  guardianName = "",
+  guardianPhone = "",
+} = {}) {
+  const normalizedElementId =
+    typeof elementId === "string" ? elementId.trim() : "";
+
+  if (!normalizedElementId) return validationError("Selecciona un elemento válido.");
+
+  const { data: current, error: currentError } = await supabase
+    .from("elements")
+    .select("given_names, paternal_surname, maternal_surname, birth_date, guardian_phone")
+    .eq("id", normalizedElementId)
+    .single();
+
+  if (currentError) {
+    return {
+      ok: false,
+      code: currentError.code || "SUPABASE_QUERY_ERROR",
+      message: "No se pudo validar el expediente del elemento.",
+      raw: currentError,
+    };
+  }
+
+  const updatePayload = {};
+
+  if (enabled) {
+    if (calculateAge(current?.birth_date) < 18) {
+      return validationError("Solo un elemento mayor de edad puede ser su propio tutor.");
+    }
+
+    const selfTutorName = getFullNameFromElement(current);
+    if (!selfTutorName) return validationError("Completa el nombre del elemento primero.");
+
+    let normalizedPhone;
+    try {
+      normalizedPhone = normalizeGuardianPhone(guardianPhone || current?.guardian_phone);
+    } catch (error) {
+      return validationError(error.message);
+    }
+
+    updatePayload.is_self_tutor = true;
+    updatePayload.guardian_name = selfTutorName;
+    updatePayload.guardian_phone = normalizedPhone;
+  } else {
+    let normalizedGuardianName;
+    let normalizedGuardianPhone;
+
+    try {
+      normalizedGuardianName = normalizeRequiredText(guardianName);
+      normalizedGuardianPhone = normalizeGuardianPhone(guardianPhone);
+    } catch (error) {
+      return validationError(error.message);
+    }
+
+    updatePayload.is_self_tutor = false;
+    updatePayload.guardian_name = normalizedGuardianName;
+    updatePayload.guardian_phone = normalizedGuardianPhone;
+  }
+
+  const { error } = await supabase
+    .from("elements")
+    .update(updatePayload)
+    .eq("id", normalizedElementId);
+
+  if (error) {
+    return {
+      ok: false,
+      code: error.code || "SUPABASE_UPDATE_ERROR",
+      message: "No se pudo actualizar la relación de tutor.",
+      raw: error,
+    };
+  }
+
+  const refreshed = await getElementSupabase({
+    elementId: normalizedElementId,
+    include: ["profile", "documents"],
+  });
+
+  return {
+    ...refreshed,
+    message: enabled
+      ? "El elemento quedó marcado como su propio tutor."
+      : "Se asignó un nuevo tutor correctamente.",
+  };
+}
+
+export async function uploadElementDocumentSupabase({
+  elementId,
+  documentType,
+  file,
+} = {}) {
+  const normalizedElementId =
+    typeof elementId === "string" ? elementId.trim() : "";
+  const normalizedDocumentType =
+    typeof documentType === "string" ? documentType.trim() : "";
+
+  if (!normalizedElementId) return validationError("Selecciona un elemento válido.");
+  if (!normalizedDocumentType) return validationError("Selecciona un tipo de documento válido.");
+  if (!(file instanceof File)) return validationError("Selecciona un archivo PDF.");
+  if (file.type !== "application/pdf") {
+    return validationError("Selecciona un documento en formato PDF.");
+  }
+  const signature = await file.slice(0, 5).text();
+  if (signature !== "%PDF-") {
+    return validationError("El archivo seleccionado no contiene un PDF válido.");
+  }
+  if (file.size > MAX_DOCUMENT_SIZE_BYTES) {
+    return validationError("El documento no debe superar 10 MB.");
+  }
+
+  const requestId = createRequestId();
+  const fileName = safeFileName(file.name);
+  const objectPath = `${normalizedElementId}/${normalizedDocumentType}/${requestId}-${fileName}`;
+  const storageKey = `storage:${DOCUMENTS_BUCKET}/${objectPath}`;
+
+  const uploadResult = await supabase.storage
+    .from(DOCUMENTS_BUCKET)
+    .upload(objectPath, file, {
+      contentType: "application/pdf",
+      upsert: false,
+    });
+
+  if (uploadResult.error) {
+    return {
+      ok: false,
+      code: uploadResult.error.name || "SUPABASE_STORAGE_ERROR",
+      message:
+        uploadResult.error.message ||
+        `No se pudo subir el documento al bucket ${DOCUMENTS_BUCKET}.`,
+      raw: uploadResult.error,
+    };
+  }
+
+  const metadataResult = await executeSupabaseRpc("register_element_document", {
+    p_request_id: requestId,
+    p_element_id: normalizedElementId,
+    p_document_type: normalizedDocumentType,
+    p_storage_key: storageKey,
+    p_original_filename: file.name,
+    p_mime_type: file.type,
+    p_size_bytes: file.size,
+  });
+
+  if (!metadataResult.ok) {
+    await supabase.storage.from(DOCUMENTS_BUCKET).remove([objectPath]);
+    return {
+      ...metadataResult,
+      message: "El archivo subió, pero no se pudo guardar su metadata.",
+    };
+  }
+
+  const refreshed = await getElementSupabase({
+    elementId: normalizedElementId,
+    include: ["profile", "documents"],
+  });
+
+  return {
+    ...refreshed,
+    requestId,
+    message: "Documento cargado correctamente.",
+  };
+}
+
+export async function completeElementAssetsSupabase({
+  requestId,
+  elementId,
+  assets,
+} = {}) {
+  const driveFolder = assets?.data?.driveFolder ?? assets?.driveFolder;
+  const qr = assets?.data?.qr ?? assets?.qr;
+  const documents = assets?.data?.documents ?? assets?.documents ?? [];
+
+  if (!requestId || !elementId || !driveFolder?.id || !driveFolder?.url) {
+    return validationError("La automatización no devolvió una carpeta válida.");
+  }
+
+  const result = await executeSupabaseRpc("complete_element_assets", {
+    p_request_id: requestId,
+    p_element_id: elementId,
+    p_drive_folder_id: driveFolder.id,
+    p_drive_folder_url: driveFolder.url,
+    p_qr_value: qr?.value || `pdmu:element:${elementId}`,
+    p_documents: Array.isArray(documents) ? documents : [],
+  });
+
+  if (!result.ok) return result;
+
+  return {
+    ...result,
+    requestId,
+    message: "Carpeta y documentos vinculados correctamente.",
   };
 }
 
@@ -206,9 +704,39 @@ export async function createElementSupabase(input = {}) {
   });
   if (!result.ok) return result;
 
-  const element = result.data.element;
+  let element = result.data.element;
   if (!element || typeof element.elementId !== "string") {
     return invalidResponse("Supabase no confirmó el elemento creado.", result.raw);
+  }
+
+  if (input?.selfTutor) {
+    const selfTutorName = getFullNameFromElement({
+      givenNames: input?.nombre ?? input?.givenNames,
+      paternalSurname: input?.apellidoPaterno ?? input?.paternalSurname,
+      maternalSurname: input?.apellidoMaterno ?? input?.maternalSurname,
+    });
+
+    const { error } = await supabase
+      .from("elements")
+      .update({
+        is_self_tutor: true,
+        ...(selfTutorName ? { guardian_name: selfTutorName } : {}),
+      })
+      .eq("id", element.elementId);
+
+    if (error) {
+      return {
+        ok: false,
+        code: error.code || "SUPABASE_UPDATE_ERROR",
+        message: "La inscripción se creó, pero no se pudo marcar como propio tutor.",
+        raw: error,
+      };
+    }
+
+    element = {
+      ...element,
+      isSelfTutor: true,
+    };
   }
 
   return {

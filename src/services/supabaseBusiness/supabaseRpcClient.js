@@ -43,6 +43,16 @@ const ERROR_MESSAGES = Object.freeze({
   INVALID_ENROLLMENT_DATE: "La fecha de inscripción no es válida.",
   INVALID_BILLING_POLICY: "La política de cobro no es válida.",
   INVALID_GUARDIAN_PHONE: "El teléfono del tutor no es válido.",
+  SELF_TUTOR_REQUIRES_ADULT:
+    "Solo un elemento mayor de edad puede registrarse como su propio tutor.",
+  SELF_TUTOR_REQUIRES_NAME:
+    "Completa el nombre del elemento antes de marcarlo como su propio tutor.",
+  INVALID_DOCUMENT:
+    "El documento debe ser un PDF válido de hasta 10 MB.",
+  INVALID_ELEMENT_ASSETS:
+    "La carpeta o los documentos devueltos por la automatización no son válidos.",
+  LAST_ACTIVE_ADMIN_REQUIRED:
+    "Debe permanecer al menos una cuenta administradora activa.",
   PAYMENT_PERIOD_NOT_APPLICABLE:
     "Esa mensualidad no aplica para el elemento por su fecha de inscripción.",
   INVALID_STATISTICS_RANGE: "El periodo de estadísticas no es válido.",

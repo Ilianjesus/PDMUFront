@@ -10,14 +10,12 @@
   padding: var(--space-5);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-lg);
-  background:
-    linear-gradient(180deg, #17243a, #111d2e);
+  background: #1d252e;
   box-shadow: 0 14px 36px rgba(0, 0, 0, 0.24);
 }
 
 .payments-section--ledger {
-  background:
-    linear-gradient(180deg, #162337, #0e1928);
+  background: #171d24;
 }
 
 .pagos-titulo {
@@ -50,7 +48,7 @@
   padding: var(--space-4);
   border: 1px solid rgba(190, 207, 228, 0.18);
   border-radius: var(--radius-sm);
-  background: #101b2b;
+  background: #141a20;
 }
 
 .payments-summary span {
@@ -197,7 +195,7 @@
   padding: var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  background: #091321;
+  background: #0f1419;
 }
 
 .payments-ledger__header,
@@ -222,14 +220,12 @@
   padding: var(--space-3) var(--space-4);
   border: 1px solid rgba(190, 207, 228, 0.18);
   border-radius: var(--radius-sm);
-  background: #142136;
+  background: #1a222a;
 }
 
 .payment-row--unpaid {
   border-color: rgba(220, 107, 107, 0.22);
-  background:
-    linear-gradient(90deg, rgba(220, 107, 107, 0.12), transparent 38%),
-    var(--color-surface-raised);
+  background: #1b1d2a;
 }
 
 .payment-row--future {
@@ -449,9 +445,5 @@
     width: 100%;
   }
 
-  .payment-row--unpaid {
-    background:
-      linear-gradient(180deg, rgba(220, 107, 107, 0.1), transparent 58%),
-      var(--color-surface-raised);
-  }
+  .payment-row--unpaid { background: #1b1d2a; }
 }

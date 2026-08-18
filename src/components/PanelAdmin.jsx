@@ -110,6 +110,16 @@ const PanelAdmin = () => {
     cargarElementos();
   }, [cargarElementos]);
 
+  useEffect(() => {
+    if (!seleccionado?.ID) return undefined;
+
+    const frame = window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [seleccionado?.ID]);
+
   const handleCargarModulo = async (moduloSeleccionado, item = seleccionado) => {
     if (!item?.ID) {
       mostrarMensaje("Selecciona un elemento primero", "error");
@@ -181,6 +191,30 @@ const PanelAdmin = () => {
     setMensaje(null);
     setBajaDialog({ visible: false, reason: "" });
   };
+
+  const handleElementDataChange = useCallback((updatedElement) => {
+    if (!updatedElement?.ID) return;
+
+    setData(updatedElement);
+    setSeleccionado((current) =>
+      current?.ID === updatedElement.ID
+        ? {
+            ...current,
+            ...updatedElement,
+          }
+        : current
+    );
+    setElementos((current) =>
+      current.map((item) =>
+        item.ID === updatedElement.ID
+          ? {
+              ...item,
+              ...updatedElement,
+            }
+          : item
+      )
+    );
+  }, []);
 
   const abrirBaja = () => {
     setMensaje(null);
@@ -403,28 +437,28 @@ const PanelAdmin = () => {
             ) : (
               <div className="panel-elements__list" role="list">
                 {elementosFiltrados.map((item) => (
-                  <button
-                    type="button"
-                    className="panel-element-row"
-                    key={item.ID}
-                    onClick={() => handleSeleccionar(item)}
-                    role="listitem"
-                  >
-                    <span className="panel-element-row__main">
-                      <span className="panel-element-row__name">
-                        {getElementName(item)}
-                      </span>
-                      <span className="panel-element-row__details">
-                        <span className="panel-element-row__age">
-                          {Number.isInteger(item?.edad) ? `${item.edad} años` : "Edad pendiente"}
+                  <div role="listitem" key={item.ID}>
+                    <button
+                      type="button"
+                      className="panel-element-row"
+                      onClick={() => handleSeleccionar(item)}
+                    >
+                      <span className="panel-element-row__main">
+                        <span className="panel-element-row__name">
+                          {getElementName(item)}
                         </span>
-                        <span className="panel-element-row__meta">
-                          {getBasicInfo(item)}
+                        <span className="panel-element-row__details">
+                          <span className="panel-element-row__age">
+                            {Number.isInteger(item?.edad) ? `${item.edad} años` : "Edad pendiente"}
+                          </span>
+                          <span className="panel-element-row__meta">
+                            {getBasicInfo(item)}
+                          </span>
                         </span>
                       </span>
-                    </span>
-                    <ChevronRight className="panel-element-row__arrow" aria-hidden="true" />
-                  </button>
+                      <ChevronRight className="panel-element-row__arrow" aria-hidden="true" />
+                    </button>
+                  </div>
                 ))}
               </div>
             )}
@@ -475,7 +509,7 @@ const PanelAdmin = () => {
       {seleccionado && (
         <div className="panel-detail panel-detail__module">
           {data && modulo === "Informacion" && (
-            <ModuloInfo data={data} readOnly />
+            <ModuloInfo data={data} onDataChange={handleElementDataChange} />
           )}
 
           {data && modulo === "Pagos" && (

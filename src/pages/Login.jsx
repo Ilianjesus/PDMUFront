@@ -11,6 +11,23 @@ import logo from "../assets/logo.jpeg";
 const normalizeNumericOtp = (value) =>
   value.replace(/[\s-]/g, "").replace(/\D/g, "").slice(0, 8);
 
+const getOtpRequestErrorMessage = (error, isResend = false) => {
+  if (
+    error?.code === "over_email_send_rate_limit" ||
+    error?.code === "over_request_rate_limit"
+  ) {
+    return "Se solicitaron varios códigos. Espera unos minutos antes de intentar nuevamente.";
+  }
+
+  if (error?.code === "hook_timeout" || error?.code === "hook_timeout_after_retry") {
+    return "El servicio de correo no respondió. Intenta nuevamente en unos minutos.";
+  }
+
+  return isResend
+    ? "No se pudo reenviar el código. Intenta nuevamente."
+    : "No se pudo solicitar el código. Intenta nuevamente.";
+};
+
 export function Login() {
   const [step, setStep] = useState("email");
   const [email, setEmail] = useState("");
@@ -50,7 +67,7 @@ export function Login() {
       setStep("otp");
       setResendCooldown(60);
     } catch (err) {
-      setError("No se pudo solicitar el código. Intenta nuevamente.");
+      setError(getOtpRequestErrorMessage(err));
       console.error(err);
     } finally {
       setSubmitting(false);
@@ -89,7 +106,7 @@ export function Login() {
       setResendMessage("Se solicitó un nuevo código.");
       setResendCooldown(60);
     } catch (err) {
-      setError("No se pudo reenviar el código. Intenta nuevamente.");
+      setError(getOtpRequestErrorMessage(err, true));
       console.error(err);
     } finally {
       setSubmitting(false);

@@ -6,14 +6,16 @@ import {
   UserPlus,
   ShieldCheck,
   BarChart3,
+  UsersRound,
 } from "lucide-react";
 import "../styles/Layout.css";
+import { useAuth } from "../hooks/useAuth";
 
 const primaryItems = [
   { to: "/home", label: "Inicio", icon: HomeIcon },
-  { to: "/PanelAdmin", label: "Elementos", icon: ShieldCheck },
-  { to: "/RegistrarElemento", label: "Inscripciones", icon: UserPlus },
-  { to: "/registrar-asistencia", label: "Asistencias", icon: ClipboardCheck },
+  { to: "/elementos", label: "Elementos", icon: ShieldCheck },
+  { to: "/inscripciones", label: "Inscripciones", icon: UserPlus },
+  { to: "/asistencias", label: "Asistencias", icon: ClipboardCheck },
 ];
 
 function NavigationItem({ to, label, icon, secondary = false }) {
@@ -32,6 +34,8 @@ function NavigationItem({ to, label, icon, secondary = false }) {
 
 
 export function Layout() {
+  const { operatorProfile } = useAuth();
+
   return (
     <div className="app-layout">
       <aside className="app-sidebar" aria-label="Navegación principal">
@@ -44,11 +48,19 @@ export function Layout() {
             Análisis
           </span>
           <NavigationItem
-            to="/Estadisticas"
+            to="/estadisticas"
             label="Estadísticas"
             icon={BarChart3}
             secondary
           />
+          {operatorProfile?.role === "admin" && (
+            <NavigationItem
+              to="/operadores"
+              label="Operadores"
+              icon={UsersRound}
+              secondary
+            />
+          )}
         </nav>
         <p className="app-sidebar__footer">Pentathlon Deportivo Militarizado Universitario</p>
       </aside>

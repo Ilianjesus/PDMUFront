@@ -1,6 +1,6 @@
 import { createElement, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Info, LogOut, MoreVertical } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { ArrowLeft, Info, LogOut, MoreVertical, UsersRound } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 
 export function PageHeader({
@@ -14,13 +14,18 @@ export function PageHeader({
   menuActions = [],
   children,
 }) {
-  const { logout } = useAuth();
+  const { logout, operatorProfile } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const menuRef = useRef(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState("");
-  const hasMenuActions = menuActions.length > 0;
+  const adminActions = operatorProfile?.role === "admin" && location.pathname !== "/operadores"
+    ? [{ id: "global-operators", label: "Operadores", icon: UsersRound, onSelect: () => navigate("/operadores") }]
+    : [];
+  const visibleMenuActions = [...menuActions, ...adminActions];
+  const hasMenuActions = visibleMenuActions.length > 0;
 
   useEffect(() => {
     if (!menuOpen) return undefined;
@@ -108,7 +113,7 @@ export function PageHeader({
               </button>
               {menuOpen && (
                 <div className="page-header-menu__panel" role="menu">
-                  {menuActions.map((action) => (
+                  {visibleMenuActions.map((action) => (
                     <button
                       type="button"
                       role="menuitem"

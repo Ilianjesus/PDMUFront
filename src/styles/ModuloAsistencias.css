@@ -75,8 +75,7 @@
   padding: var(--space-5);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-lg);
-  background:
-    linear-gradient(180deg, #17243a, #111d2e);
+  background: #1d252e;
   box-shadow: 0 14px 36px rgba(0, 0, 0, 0.24);
 }
 
@@ -90,7 +89,7 @@
   flex-direction: column;
   padding: var(--space-4) var(--space-5);
   border-radius: var(--radius-sm);
-  background: #101b2b;
+  background: #141a20;
   border: 1px solid rgba(190, 207, 228, 0.18);
   transition: all 0.2s ease;
 }
@@ -130,8 +129,7 @@
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  background:
-    linear-gradient(180deg, #162337, #0e1928);
+  background: #171d24;
   box-shadow: 0 14px 36px rgba(0, 0, 0, 0.24);
 }
 
@@ -167,7 +165,7 @@
   gap: var(--space-3);
   padding: var(--space-4);
   border-radius: var(--radius-md);
-  background: #101b2b;
+  background: #141a20;
   border: 1px solid rgba(190, 207, 228, 0.16);
   transition: all 0.2s ease;
 }
@@ -180,12 +178,12 @@
 .attendance-session-row:last-child { }
 
 .attendance-session-row--absent {
-  background: linear-gradient(90deg, rgba(220, 107, 107, 0.08), transparent 34%);
+  background: #1b1d2a;
   border-color: rgba(220, 107, 107, 0.2);
 }
 
 .attendance-session-row--exempt {
-  background: linear-gradient(90deg, rgba(135, 163, 192, 0.08), transparent 34%);
+  background: #1a2229;
   border-color: rgba(135, 163, 192, 0.2);
 }
 
@@ -231,7 +229,7 @@
 .attendance-exception-list article {
   padding: var(--space-4);
   border-radius: var(--radius-md);
-  background: #101b2b;
+  background: #141a20;
   border: 1px solid rgba(190, 207, 228, 0.16);
 }
 

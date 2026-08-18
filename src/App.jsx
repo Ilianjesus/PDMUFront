@@ -6,6 +6,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { RequireAuth } from "./components/RequireAuth";
 import { AuthenticatedShell } from "./components/AuthenticatedShell";
 import { LoadingState } from "./components/ui/LoadingState";
+import { RequireAdmin } from "./components/RequireAdmin";
 
 const Home = lazy(() =>
   import("./pages/Home").then((module) => ({ default: module.Home }))
@@ -28,8 +29,10 @@ const Estadisticas = lazy(() =>
     default: module.Estadisticas,
   }))
 );
-const RegistrarPago = lazy(() => import("./pages/RegistrarPago"));
 const PanelAdmin = lazy(() => import("./components/PanelAdmin"));
+const Operadores = lazy(() =>
+  import("./pages/Operadores").then((module) => ({ default: module.Operadores }))
+);
 
 function App() {
   return (
@@ -44,31 +47,14 @@ function App() {
               <Route element={<AuthenticatedShell />}>
                 <Route element={<Layout />}>
                   <Route path="/home" element={<Home />} />
-                  <Route
-                    path="/registrar-asistencia"
-                    element={<RegistrarAsistencia />}
-                  />
-                  <Route
-                    path="/RegistrarElemento"
-                    element={<RegistrarElemento />}
-                  />
-                  <Route path="/Estadisticas" element={<Estadisticas />} />
-                  <Route path="/Scanner" element={<Scanner />} />
-                  <Route path="/RegistrarPago" element={<RegistrarPago />} />
-                  <Route path="/PanelAdmin" element={<PanelAdmin />} />
-
-                  <Route
-                    path="/ModuloInfo"
-                    element={<Navigate to="/PanelAdmin" replace />}
-                  />
-                  <Route
-                    path="/ModuloPagos"
-                    element={<Navigate to="/PanelAdmin" replace />}
-                  />
-                  <Route
-                    path="/ModuloAsistencias"
-                    element={<Navigate to="/PanelAdmin" replace />}
-                  />
+                  <Route path="/asistencias" element={<RegistrarAsistencia />} />
+                  <Route path="/inscripciones" element={<RegistrarElemento />} />
+                  <Route path="/estadisticas" element={<Estadisticas />} />
+                  <Route path="/scanner" element={<Scanner />} />
+                  <Route path="/elementos" element={<PanelAdmin />} />
+                  <Route element={<RequireAdmin />}>
+                    <Route path="/operadores" element={<Operadores />} />
+                  </Route>
                 </Route>
               </Route>
             </Route>

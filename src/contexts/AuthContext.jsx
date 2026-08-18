@@ -8,10 +8,14 @@ import {
   requestEmailOtp,
   verifyEmailOtp,
 } from "../services/auth/supabaseAuth";
+import { getCurrentOperatorProfile } from "../services/operatorProfileService";
 
 export function AuthProvider({ children }) {
   const [authStatus, setAuthStatus] = useState("loading");
   const [session, setSession] = useState(null);
+  const [operatorProfile, setOperatorProfile] = useState(null);
+  const [profileStatus, setProfileStatus] = useState("idle");
+  const [profileError, setProfileError] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -43,6 +47,40 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+
+    if (!session?.uid) {
+      setOperatorProfile(null);
+      setProfileStatus("idle");
+      setProfileError("");
+      return () => {
+        active = false;
+      };
+    }
+
+    setProfileStatus("loading");
+    setProfileError("");
+
+    getCurrentOperatorProfile(session.uid).then((result) => {
+      if (!active) return;
+
+      if (!result.ok) {
+        setOperatorProfile(null);
+        setProfileStatus("error");
+        setProfileError(result.message);
+        return;
+      }
+
+      setOperatorProfile(result.data);
+      setProfileStatus("ready");
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [session?.uid]);
+
   const requestOtp = useCallback((email) => requestEmailOtp(email), []);
 
   const verifyOtp = useCallback(async (email, token) => {
@@ -55,6 +93,9 @@ export function AuthProvider({ children }) {
   const logout = useCallback(async () => {
     await logoutSupabaseSession();
     setSession(null);
+    setOperatorProfile(null);
+    setProfileStatus("idle");
+    setProfileError("");
     setAuthStatus("unauthenticated");
   }, []);
 
@@ -67,6 +108,9 @@ export function AuthProvider({ children }) {
     () => ({
       authStatus,
       session,
+      operatorProfile,
+      profileStatus,
+      profileError,
       requestOtp,
       verifyOtp,
       logout,
@@ -75,6 +119,9 @@ export function AuthProvider({ children }) {
     [
       authStatus,
       session,
+      operatorProfile,
+      profileStatus,
+      profileError,
       requestOtp,
       verifyOtp,
       logout,

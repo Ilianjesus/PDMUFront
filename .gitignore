@@ -1,6 +1,19 @@
+# Local configuration
 .env
+.env.*
+!.env.example
+
+# Dependencies and generated output
+node_modules/
+dist/
+dist-ssr/
+.vite/
+coverage/
+playwright-report/
+test-results/
+
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -8,43 +21,13 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# Editors and operating systems
+.vscode/
+.idea/
 .DS_Store
+Thumbs.db
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-
-# --- Dependencias ---
-node_modules/
-
-# --- Builds ---
-dist/
-.vite/
-
-# --- Archivos de logs ---
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
-# --- Sistema operativo ---
-.DS_Store
-Thumbs.db
-
-# --- Editor/IDE ---
-.vscode/
-.idea/
-*.swp
-
-# --- Otros ---
-*.local

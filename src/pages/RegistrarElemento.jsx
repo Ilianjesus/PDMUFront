@@ -1,25 +1,13 @@
-import { useEffect, useState } from "react";
-import Swal from "sweetalert2";
+import { useEffect, useRef, useState } from "react";
+import { Camera, Check, FileText, FileUp, Trash2 } from "lucide-react";
 import { registerElement } from "../services/elementsService";
-import { REGISTRATION_DOCUMENTS } from "../services/registrationWebhookService";
+import { REGISTRATION_DOCUMENTS } from "../constants/registrationDocuments";
+import { createRequestId } from "../services/supabaseBusiness/requestId";
 import { PageHeader } from "../components/ui/PageHeader";
+import { BirthDateSelector } from "../components/ui/BirthDateSelector";
+import { StatusMessage } from "../components/ui/StatusMessage";
 import { calculateAge, getElementGroup } from "../utils/elementGroups";
 import "../styles/global.css";
-
-const MONTH_OPTIONS = [
-  { value: "01", label: "Enero" },
-  { value: "02", label: "Febrero" },
-  { value: "03", label: "Marzo" },
-  { value: "04", label: "Abril" },
-  { value: "05", label: "Mayo" },
-  { value: "06", label: "Junio" },
-  { value: "07", label: "Julio" },
-  { value: "08", label: "Agosto" },
-  { value: "09", label: "Septiembre" },
-  { value: "10", label: "Octubre" },
-  { value: "11", label: "Noviembre" },
-  { value: "12", label: "Diciembre" },
-];
 
 const INITIAL_FORM_DATA = {
   nombre: "",
@@ -32,6 +20,8 @@ const INITIAL_FORM_DATA = {
   telefonoTutor: "",
   enfermedades: "",
 };
+
+const MAX_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024;
 
 function createInitialFiles() {
   return REGISTRATION_DOCUMENTS.reduce((files, document) => {
@@ -93,156 +83,98 @@ function CalculatedField({ label, value, emptyText = "Se calcula automáticament
   );
 }
 
-function getDateParts(value) {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || "");
-  if (!match) return { year: "", month: "", day: "" };
-  return { year: match[1], month: match[2], day: match[3] };
-}
-
-function getDaysInMonth(year, month) {
-  const numericYear = Number(year);
-  const numericMonth = Number(month);
-  if (!numericYear || !numericMonth) return 31;
-  return new Date(numericYear, numericMonth, 0).getDate();
-}
-
-function normalizeBirthDateParts(parts) {
-  const today = new Date();
-  const currentYear = today.getFullYear();
-  const currentMonth = today.getMonth() + 1;
-  const currentDay = today.getDate();
-  const next = { ...parts };
-
-  if (Number(next.year) === currentYear && Number(next.month) > currentMonth) {
-    next.month = String(currentMonth).padStart(2, "0");
-  }
-
-  const daysInMonth = getDaysInMonth(next.year, next.month);
-  const maxDay =
-    Number(next.year) === currentYear && Number(next.month) === currentMonth
-      ? Math.min(daysInMonth, currentDay)
-      : daysInMonth;
-
-  if (Number(next.day) > maxDay) {
-    next.day = String(maxDay).padStart(2, "0");
-  }
-
-  return next;
-}
-
-function buildDateValue(parts) {
-  const { year, month, day } = normalizeBirthDateParts(parts);
-  if (!year || !month || !day) return "";
-  return `${year}-${month}-${day}`;
-}
-
-function getBirthYearOptions() {
-  const currentYear = new Date().getFullYear();
-  const years = [];
-  for (let year = currentYear; year >= currentYear - 80; year -= 1) {
-    years.push(String(year));
-  }
-  return years;
-}
-
-function BirthDateSelector({ value, onChange }) {
-  const [draftParts, setDraftParts] = useState(() => getDateParts(value));
-  const parts = normalizeBirthDateParts(draftParts);
-  const today = new Date();
-  const currentYear = today.getFullYear();
-  const currentMonth = today.getMonth() + 1;
-  const currentDay = today.getDate();
-  const daysInMonth = getDaysInMonth(parts.year, parts.month);
-  const maxDay =
-    Number(parts.year) === currentYear && Number(parts.month) === currentMonth
-      ? Math.min(daysInMonth, currentDay)
-      : daysInMonth;
-  const birthYears = getBirthYearOptions();
+function DocumentCapture({ document, file, loading, onChange, onRemove }) {
+  const [previewUrl, setPreviewUrl] = useState("");
+  const cameraInputRef = useRef(null);
 
   useEffect(() => {
-    setDraftParts(getDateParts(value));
-  }, [value]);
+    if (!file || !file.type.startsWith("image/")) {
+      setPreviewUrl("");
+      return undefined;
+    }
 
-  const handlePartChange = (part, nextValue) => {
-    const nextParts = normalizeBirthDateParts({
-      ...parts,
-      [part]: nextValue,
-    });
-
-    setDraftParts(nextParts);
-    onChange(buildDateValue(nextParts));
-  };
+    const nextPreviewUrl = URL.createObjectURL(file);
+    setPreviewUrl(nextPreviewUrl);
+    return () => URL.revokeObjectURL(nextPreviewUrl);
+  }, [file]);
 
   return (
-    <fieldset className="birth-date-selector">
-      <legend>Fecha de nacimiento</legend>
-      <div className="birth-date-selector__grid">
-        <label>
-          Día
-          <select
-            value={parts.day}
-            onChange={(event) => handlePartChange("day", event.target.value)}
-            required
-          >
-            <option value="">Día</option>
-            {Array.from({ length: maxDay }, (_, index) => {
-              const day = String(index + 1).padStart(2, "0");
-              return (
-                <option key={day} value={day}>
-                  {index + 1}
-                </option>
-              );
-            })}
-          </select>
-        </label>
+    <article className={`document-capture${file ? " is-ready" : ""}`}>
+      <button
+        type="button"
+        className="document-capture__primary"
+        onClick={() => cameraInputRef.current?.click()}
+        disabled={loading}
+        aria-label={`${file ? "Volver a fotografiar" : "Fotografiar"} ${document.label}`}
+      >
+        <span className="document-capture__preview" aria-hidden="true">
+          {previewUrl ? (
+            <img src={previewUrl} alt="" />
+          ) : file ? (
+            <FileText />
+          ) : (
+            <Camera />
+          )}
+        </span>
+        <span className="document-capture__copy">
+          <strong>{document.label}</strong>
+          <small>{file?.name || "Tomar foto"}</small>
+        </span>
+        {file && <Check className="document-capture__check" aria-hidden="true" />}
+      </button>
 
-        <label>
-          Mes
-          <select
-            value={parts.month}
-            onChange={(event) => handlePartChange("month", event.target.value)}
-            required
-          >
-            <option value="">Mes</option>
-            {MONTH_OPTIONS.map((month) => (
-              <option
-                key={month.value}
-                value={month.value}
-                disabled={
-                  Number(parts.year) === currentYear &&
-                  Number(month.value) > currentMonth
-                }
-              >
-                {month.label}
-              </option>
-            ))}
-          </select>
-        </label>
+      <input
+        ref={cameraInputRef}
+        className="visually-hidden"
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={(event) => onChange(event, document.key, "camera")}
+        disabled={loading}
+      />
 
-        <label>
-          Año
-          <select
-            value={parts.year}
-            onChange={(event) => handlePartChange("year", event.target.value)}
-            required
-          >
-            <option value="">Año</option>
-            {birthYears.map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
+      <div className="document-capture__actions">
+        <label className="document-capture__file" title="Adjuntar archivo">
+          <FileUp aria-hidden="true" />
+          <span>Adjuntar</span>
+          <input
+            type="file"
+            accept="image/*,application/pdf"
+            onChange={(event) => onChange(event, document.key, "file")}
+            disabled={loading}
+          />
         </label>
+        {file && (
+          <button
+            type="button"
+            className="document-capture__remove"
+            onClick={() => onRemove(document.key)}
+            disabled={loading}
+            title="Quitar documento"
+            aria-label={`Quitar ${document.label}`}
+          >
+            <Trash2 aria-hidden="true" />
+          </button>
+        )}
       </div>
-    </fieldset>
+    </article>
   );
+}
+
+function getLocalDateValue(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 export function RegistrarElemento() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [feedback, setFeedback] = useState(null);
   const [selfTutor, setSelfTutor] = useState(false);
+  const registrationRequestId = useRef(createRequestId());
+  const assetsRequestId = useRef(createRequestId());
 
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
   const [files, setFiles] = useState(() => createInitialFiles());
@@ -254,9 +186,6 @@ export function RegistrarElemento() {
   });
   const isAdult = age !== null && age >= 18;
   const fullName = getFullName(formData);
-  const selfTutorPhoneLocked =
-    selfTutor && /^\d{10}$/.test(formData.telefonoTutor);
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     const nextAge = name === "fechaNacimiento" ? calculateAge(value) : age;
@@ -318,16 +247,31 @@ export function RegistrarElemento() {
 
   const disableSelfTutor = () => {
     setSelfTutor(false);
+    setFormData((current) => ({
+      ...current,
+      tutor: "",
+      telefonoTutor: "",
+    }));
   };
 
   const handleFileChange = (event, key) => {
     const file = event.target.files?.[0] ?? null;
 
-    if (file && file.type !== "application/pdf") {
+    if (file && file.type !== "application/pdf" && !file.type.startsWith("image/")) {
       showAlert({
         icon: "error",
         title: "Archivo inválido",
-        text: "Selecciona un documento en formato PDF.",
+        text: "Selecciona una fotografía o un documento PDF.",
+      });
+      event.target.value = "";
+      return;
+    }
+
+    if (file && file.size > MAX_DOCUMENT_SIZE_BYTES) {
+      showAlert({
+        icon: "error",
+        title: "Archivo demasiado grande",
+        text: "Cada documento debe pesar 10 MB o menos.",
       });
       event.target.value = "";
       return;
@@ -337,6 +281,11 @@ export function RegistrarElemento() {
       ...current,
       [key]: file,
     }));
+    event.target.value = "";
+  };
+
+  const removeFile = (key) => {
+    setFiles((current) => ({ ...current, [key]: null }));
   };
 
   const handleNext = async () => {
@@ -355,7 +304,7 @@ export function RegistrarElemento() {
         return;
       }
 
-      const today = new Date().toISOString().split("T")[0];
+      const today = getLocalDateValue();
       if (formData.fechaNacimiento > today) {
         await showAlert({
           icon: "error",
@@ -386,18 +335,17 @@ export function RegistrarElemento() {
     setFiles(createInitialFiles());
     setSelfTutor(false);
     setStep(1);
+    registrationRequestId.current = createRequestId();
+    assetsRequestId.current = createRequestId();
   };
 
   const showAlert = ({ icon, title, text }) => {
-    return Swal.fire({
-      icon,
-      title,
-      text,
-      confirmButtonText: "Aceptar",
-      confirmButtonColor: "#FFC107",
-      background: "#1B263B",
-      color: "#FFFFFF",
+    setFeedback({
+      variant: icon === "error" ? "error" : icon === "success" ? "success" : "warning",
+      text: `${title}. ${text}`,
     });
+    window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+    return Promise.resolve();
   };
 
   const showAlertAfterLoading = async (alertConfig) => {
@@ -409,7 +357,7 @@ export function RegistrarElemento() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const hoy = new Date().toISOString().split("T")[0];
+    const hoy = getLocalDateValue();
 
     if (formData.fechaNacimiento > hoy) {
       await showAlert({
@@ -434,7 +382,15 @@ export function RegistrarElemento() {
     setLoading(true);
 
     try {
-      const result = await registerElement(formData, files);
+      const result = await registerElement(
+        {
+          ...formData,
+          selfTutor,
+          requestId: registrationRequestId.current,
+          assetsRequestId: assetsRequestId.current,
+        },
+        files
+      );
 
       if (result.ok) {
         await showAlertAfterLoading({
@@ -484,9 +440,15 @@ export function RegistrarElemento() {
           infoTooltip="Captura el expediente inicial en tres pasos. Los campos obligatorios se validan antes de continuar."
         />
 
+        {feedback && (
+          <StatusMessage variant={feedback.variant} className="registration-feedback">
+            {feedback.text}
+          </StatusMessage>
+        )}
+
         <div className="registration-workspace">
           <ol className="step-list" aria-label={`Paso ${step} de 3`}>
-            {["Datos personales", "Tutor", "Documentos"].map((label, index) => {
+            {["Elemento", "Contacto", "Documentos"].map((label, index) => {
               const stepNumber = index + 1;
               return (
                 <li
@@ -537,19 +499,28 @@ export function RegistrarElemento() {
               onChange={handleChange}
             />
 
-            <FloatingField
-              as="select"
-              id="sexo"
-              label="Sexo"
-              name="sexo"
-              value={formData.sexo}
-              onChange={handleChange}
-              required
-            >
-              <option value="" disabled></option>
-              <option value="Masculino">Masculino</option>
-              <option value="Femenino">Femenino</option>
-            </FloatingField>
+            <fieldset className="registration-choice">
+              <legend>Sexo</legend>
+              <div className="registration-choice__options">
+                {["Femenino", "Masculino"].map((option) => (
+                  <label
+                    key={option}
+                    className={formData.sexo === option ? "is-selected" : ""}
+                  >
+                    <input
+                      type="radio"
+                      name="sexo"
+                      value={option}
+                      checked={formData.sexo === option}
+                      onChange={handleChange}
+                      required
+                    />
+                    <span>{option}</span>
+                    {formData.sexo === option && <Check aria-hidden="true" />}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
 
             <BirthDateSelector
               value={formData.fechaNacimiento}
@@ -566,15 +537,6 @@ export function RegistrarElemento() {
               value={elementGroup?.label ?? ""}
             />
 
-            <FloatingField
-              as="textarea"
-              id="enfermedades"
-              label="Enfermedades o condiciones médicas (opcional)"
-              name="enfermedades"
-              value={formData.enfermedades}
-              onChange={handleChange}
-            />
-
             <button
               type="button"
               className="registrar-button"
@@ -589,25 +551,38 @@ export function RegistrarElemento() {
         {step === 2 && (
           <>
             <div>
-              <h2 className="registrar-subtitle">Datos del tutor</h2>
+              <h2 className="registrar-subtitle">Contacto responsable</h2>
             </div>
 
             {isAdult && (
-              <div className="self-tutor-row">
-                <button
-                  type="button"
-                  className="registrar-button registrar-button--secondary registrar-button--compact"
-                  onClick={selfTutor ? disableSelfTutor : enableSelfTutor}
-                  disabled={loading}
-                >
-                  {selfTutor ? "Editar tutor manualmente" : "Es su propio tutor"}
-                </button>
-              </div>
+              <fieldset className="registration-choice registration-choice--contact">
+                <legend>¿Quién será el contacto?</legend>
+                <div className="registration-choice__options">
+                  <button
+                    type="button"
+                    className={selfTutor ? "is-selected" : ""}
+                    onClick={enableSelfTutor}
+                    disabled={loading}
+                  >
+                    El elemento
+                    {selfTutor && <Check aria-hidden="true" />}
+                  </button>
+                  <button
+                    type="button"
+                    className={!selfTutor ? "is-selected" : ""}
+                    onClick={disableSelfTutor}
+                    disabled={loading}
+                  >
+                    Otra persona
+                    {!selfTutor && <Check aria-hidden="true" />}
+                  </button>
+                </div>
+              </fieldset>
             )}
 
             <FloatingField
               id="tutor"
-              label="Nombre del tutor"
+              label={selfTutor ? "Nombre del contacto" : "Nombre del tutor o responsable"}
               type="text"
               name="tutor"
               value={formData.tutor}
@@ -618,7 +593,7 @@ export function RegistrarElemento() {
 
             <FloatingField
               id="telefonoTutor"
-              label="Teléfono del tutor (10 dígitos)"
+              label={selfTutor ? "Teléfono de contacto (10 dígitos)" : "Teléfono del tutor (10 dígitos)"}
               type="tel"
               name="telefonoTutor"
               value={formData.telefonoTutor}
@@ -629,9 +604,17 @@ export function RegistrarElemento() {
                   telefonoTutor: value,
                 });
               }}
-              readOnly={selfTutorPhoneLocked}
               pattern="[0-9]{10}"
               required
+            />
+
+            <FloatingField
+              as="textarea"
+              id="enfermedades"
+              label="Condiciones médicas (opcional)"
+              name="enfermedades"
+              value={formData.enfermedades}
+              onChange={handleChange}
             />
 
             <div className="registrar-actions">
@@ -660,29 +643,19 @@ export function RegistrarElemento() {
           <>
             <div>
               <h2 className="registrar-subtitle">Documentos</h2>
-              <p className="registrar-helper-text" role="status">
-                La inscripción puede guardarse ahora. Los documentos se podrán agregar después.
-              </p>
+              <p className="registrar-helper-text" role="status">Toca un documento para fotografiarlo.</p>
             </div>
 
             <div className="document-checklist" aria-label="Documentos de inscripción">
               {REGISTRATION_DOCUMENTS.map((document) => (
-                <label className="document-checklist__item" key={document.key}>
-                  <span>
-                    <strong>{document.label}</strong>
-                    <small>
-                      {files[document.key]?.name || "Selecciona PDF"}
-                    </small>
-                  </span>
-                  <b>{files[document.key] ? "Seleccionado" : "Pendiente"}</b>
-                  <input
-                    type="file"
-                    name={document.key}
-                    accept="application/pdf"
-                    onChange={(event) => handleFileChange(event, document.key)}
-                    disabled={loading}
-                  />
-                </label>
+                <DocumentCapture
+                  key={document.key}
+                  document={document}
+                  file={files[document.key]}
+                  loading={loading}
+                  onChange={handleFileChange}
+                  onRemove={removeFile}
+                />
               ))}
             </div>
 
@@ -701,7 +674,7 @@ export function RegistrarElemento() {
                 type="submit"
                 disabled={loading}
               >
-                {loading ? "Enviando..." : "Enviar Registro"}
+                {loading ? "Creando expediente..." : "Crear expediente"}
               </button>
             </div>
           </>
