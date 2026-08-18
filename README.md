@@ -49,7 +49,7 @@ usa `VITE_BASE_PATH=/` en `.env.local`.
 
 ## Despliegue
 
-1. Aplica en orden las migraciones de `supabase/migrations`.
+1. Aplica `supabase/migrations/202608180001_current_schema.sql` en un proyecto nuevo.
 2. Publica los workflows de n8n y configura el hook Send Email de Supabase Auth.
 3. Configura Gmail, Google Drive y el conversor PDF dentro de n8n.
 4. Da acceso a Drive sobre la carpeta raíz operativa.

@@ -1,10 +1,11 @@
 # Base de datos
 
-## Migraciones
+## Esquema actual
 
-`supabase/migrations` contiene el historial ejecutable del producto. Los archivos
-se aplican por nombre ascendente y no deben editarse después de desplegarse; un
-cambio posterior se agrega como una nueva migración.
+`supabase/migrations/202608180001_current_schema.sql` es la baseline única del
+producto. Contiene el estado vigente de tablas, funciones RPC, índices, triggers,
+RLS, permisos, Storage y datos estructurales. No conserva pasos intermedios ni
+versiones reemplazadas.
 
 La validación local integral ejecuta:
 
@@ -13,8 +14,11 @@ npm run test:schema
 ```
 
 El script levanta PostgreSQL 16 en Docker, crea las primitivas mínimas de Auth y
-Storage, aplica todas las migraciones y comprueba sincronización de tutor,
+Storage, aplica la baseline y comprueba sincronización de tutor,
 idempotencia documental, persistencia de Drive y protección del último admin.
+
+La baseline está destinada a proyectos nuevos. El proyecto Supabase ya desplegado
+no necesita volver a ejecutarla porque su esquema ya se encuentra en este estado.
 
 ## Primer administrador
 
