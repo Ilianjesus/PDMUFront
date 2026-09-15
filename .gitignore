@@ -11,6 +11,20 @@ dist-ssr/
 coverage/
 playwright-report/
 test-results/
+artifacts/
+debug/
+*.trace
+
+# Local development and agent tooling
+.agents/
+.codex/
+.mcp.json
+.mcp.*.json
+skills-lock.json
+
+# Local Supabase CLI state
+supabase/.branches/
+supabase/.temp/
 
 # Logs
 logs/

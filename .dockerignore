@@ -2,12 +2,17 @@
 .github
 .agents
 .codex
+.mcp.json
+.mcp.*.json
+skills-lock.json
 
 node_modules
 dist
 coverage
 playwright-report
 test-results
+artifacts
+debug
 
 .env
 .env.*

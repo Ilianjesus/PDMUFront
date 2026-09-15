@@ -1,6 +1,6 @@
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   listActivitySessions,
   registerAttendance,
@@ -76,6 +76,7 @@ function withTimeout(promise, timeoutMs) {
 }
 
 export function Scanner() {
+  const navigate = useNavigate();
   const [scanResults, setScanResults] = useState([]);
   const [scanning, setScanning] = useState(false);
   const [hasStartedScan, setHasStartedScan] = useState(false);
@@ -320,6 +321,8 @@ export function Scanner() {
           eyebrow="Control de asistencia"
           title="Escáner QR"
           description="Alinea el código dentro del marco. El registro se procesa automáticamente al detectarlo."
+          onBack={() => navigate("/asistencia")}
+          backLabel="Volver a asistencia"
         />
 
         <div className="scanner-layout">

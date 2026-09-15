@@ -33,6 +33,12 @@ const PanelAdmin = lazy(() => import("./components/PanelAdmin"));
 const Operadores = lazy(() =>
   import("./pages/Operadores").then((module) => ({ default: module.Operadores }))
 );
+const Pagos = lazy(() =>
+  import("./pages/Pagos").then((module) => ({ default: module.Pagos }))
+);
+const Mas = lazy(() =>
+  import("./pages/Mas").then((module) => ({ default: module.Mas }))
+);
 
 function App() {
   return (
@@ -40,25 +46,35 @@ function App() {
       <HashRouter>
         <Suspense fallback={<LoadingState label="Cargando módulo..." />}>
           <Routes>
-            <Route path="/" element={<Navigate to="/home" replace />} />
+            <Route path="/" element={<Navigate to="/inicio" replace />} />
             <Route path="/login" element={<Login />} />
 
             <Route element={<RequireAuth />}>
               <Route element={<AuthenticatedShell />}>
                 <Route element={<Layout />}>
-                  <Route path="/home" element={<Home />} />
-                  <Route path="/asistencias" element={<RegistrarAsistencia />} />
-                  <Route path="/inscripciones" element={<RegistrarElemento />} />
-                  <Route path="/estadisticas" element={<Estadisticas />} />
-                  <Route path="/scanner" element={<Scanner />} />
+                  <Route path="/inicio" element={<Home />} />
+                  <Route path="/home" element={<Navigate to="/inicio" replace />} />
+                  <Route path="/asistencia" element={<RegistrarAsistencia />} />
+                  <Route path="/asistencias" element={<Navigate to="/asistencia" replace />} />
+                  <Route path="/asistencia/escaner" element={<Scanner />} />
+                  <Route path="/scanner" element={<Navigate to="/asistencia/escaner" replace />} />
                   <Route path="/elementos" element={<PanelAdmin />} />
+                  <Route path="/elementos/nuevo" element={<RegistrarElemento />} />
+                  <Route path="/elementos/:elementId" element={<PanelAdmin />} />
+                  <Route path="/elementos/:elementId/:section" element={<PanelAdmin />} />
+                  <Route path="/inscripciones" element={<Navigate to="/elementos/nuevo" replace />} />
+                  <Route path="/pagos" element={<Pagos />} />
+                  <Route path="/reportes" element={<Estadisticas />} />
+                  <Route path="/estadisticas" element={<Navigate to="/reportes" replace />} />
+                  <Route path="/mas" element={<Mas />} />
                   <Route element={<RequireAdmin />}>
-                    <Route path="/operadores" element={<Operadores />} />
+                    <Route path="/administracion/operadores" element={<Operadores />} />
+                    <Route path="/operadores" element={<Navigate to="/administracion/operadores" replace />} />
                   </Route>
                 </Route>
               </Route>
             </Route>
-            <Route path="*" element={<Navigate to="/home" replace />} />
+            <Route path="*" element={<Navigate to="/inicio" replace />} />
           </Routes>
         </Suspense>
       </HashRouter>

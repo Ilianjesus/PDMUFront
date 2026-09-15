@@ -58,6 +58,47 @@
   font-weight: 650;
 }
 
+.document-processing-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: calc(var(--space-5) * -0.35) 0 var(--space-4);
+  padding: 0.7rem 0.8rem;
+  border: 1px solid rgba(101, 165, 217, 0.28);
+  border-radius: var(--radius-sm);
+  background: rgba(101, 165, 217, 0.08);
+  color: var(--color-info);
+}
+
+.document-processing-note--warning {
+  border-color: rgba(239, 193, 76, 0.3);
+  background: rgba(239, 193, 76, 0.08);
+  color: var(--color-accent-strong);
+}
+
+.document-processing-note > svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  margin-top: 0.1rem;
+}
+
+.document-processing-note > div {
+  min-width: 0;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.document-processing-note strong,
+.document-processing-note span {
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+}
+
+.document-processing-note span {
+  color: var(--color-text-muted);
+}
+
 .info-fields-grid,
 .documents-grid {
   display: grid;
@@ -119,8 +160,8 @@
 .edit-icon-btn:hover { background: var(--color-surface-hover); color: var(--color-accent-strong); }
 
 .field-action-row {
-  display: flex;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-2);
 }
 
@@ -263,6 +304,40 @@
   gap: var(--space-2);
 }
 
+.document-group__meta-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.document-delete-btn {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(232, 104, 114, 0.34);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-danger-text);
+  cursor: pointer;
+}
+
+.document-delete-btn:hover,
+.document-delete-btn:focus-visible {
+  background: var(--color-danger-soft);
+}
+
+.document-delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.document-delete-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
 .enrollment-history {
   display: grid;
   gap: var(--space-2);
@@ -358,12 +433,18 @@
   color: var(--color-danger-text);
 }
 
-.upload-btn {
+.document-source-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.document-source-btn {
   min-height: 36px;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-2);
-  flex: 0 0 auto;
   padding: 0.4rem 0.7rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -373,9 +454,12 @@
   cursor: pointer;
 }
 
-.upload-btn:hover { border-color: var(--color-primary); color: var(--color-accent-strong); }
+.document-source-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-accent-strong);
+}
 
-.upload-btn svg {
+.document-source-btn svg {
   width: 16px;
   height: 16px;
   flex: 0 0 auto;
@@ -383,20 +467,50 @@
 
 .upload-confirm-box {
   min-width: 0;
-  display: flex;
-  align-items: center;
+  display: grid;
   gap: var(--space-2);
 }
 
-.modulo-info-container .file-name {
-  max-width: 150px;
-  margin: 0;
+.selected-document-file {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-subtle);
+}
+
+.selected-document-file > svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  color: var(--color-accent-strong);
+}
+
+.selected-document-file > span {
+  min-width: 0;
+  display: grid;
+  gap: 0.1rem;
+}
+
+.selected-document-file strong {
   overflow: hidden;
-  color: var(--color-text-muted);
   font-size: var(--font-size-xs);
-  font-style: normal;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.selected-document-file small {
+  color: var(--color-text-subtle);
+  font-size: 0.7rem;
+}
+
+.upload-confirm-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
 }
 
 .self-tutor-dialog-fields {
@@ -457,8 +571,7 @@
     margin-bottom: var(--space-4);
   }
 
-  .document-row,
-  .upload-confirm-box { align-items: stretch; flex-direction: column; }
+  .document-row { align-items: stretch; flex-direction: column; }
   .self-tutor-control {
     align-items: center;
   }
@@ -468,16 +581,7 @@
     gap: var(--space-1);
   }
   .enrollment-history__item dl { grid-template-columns: 1fr; }
-  .document-group__header {
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-  .upload-btn {
-    width: 100%;
-    justify-content: center;
-  }
-  .modulo-info-container .file-name { max-width: 100%; }
-  .field-action-row { flex-direction: column-reverse; }
+  .document-group__header { align-items: center; }
   .field-save-btn,
   .field-cancel-btn,
   .confirm-upload,

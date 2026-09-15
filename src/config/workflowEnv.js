@@ -22,10 +22,3 @@ export function getElementAssetsWorkflowUrl() {
     import.meta.env.VITE_N8N_ELEMENTS_ASSETS_URL
   );
 }
-
-export function getOperatorsWorkflowUrl() {
-  return readHttpsUrl(
-    "VITE_N8N_OPERATORS_URL",
-    import.meta.env.VITE_N8N_OPERATORS_URL
-  );
-}

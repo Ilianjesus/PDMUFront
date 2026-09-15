@@ -11,7 +11,6 @@ import { calculateAge, getElementGroup } from "../../utils/elementGroups";
 const ALLOWED_INCLUDES = new Set(["profile", "documents"]);
 const DOCUMENTS_BUCKET =
   import.meta.env.VITE_SUPABASE_DOCUMENTS_BUCKET || "element-documents";
-const MAX_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024;
 const EDITABLE_ELEMENT_FIELDS = Object.freeze({
   Nombres: {
     column: "given_names",
@@ -121,16 +120,6 @@ function getFullNameFromElement(element) {
     .join(" ");
 }
 
-function safeFileName(fileName) {
-  const normalized = String(fileName || "documento.pdf")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9._-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-  return normalized || "documento.pdf";
-}
-
 function getStorageObjectPath(document) {
   const value = document?.drive_file_id ?? document?.driveFileId ?? "";
   const prefix = `storage:${DOCUMENTS_BUCKET}/`;
@@ -191,22 +180,41 @@ async function loadElementDocumentsWithUrls(elementId) {
         uploadedAt: document.uploaded_at,
         downloadUrl,
         driveUrl: document.drive_url || "",
+        driveFileId: document.drive_file_id || "",
+        storageObjectPath: getStorageObjectPath(document),
       };
     })
   );
 }
 
 async function loadElementProfileExtras(elementId) {
-  const { data, error } = await supabase
-    .from("elements")
-    .select("is_self_tutor")
-    .eq("id", elementId)
-    .single();
+  const [profileResult, assetJobResult] = await Promise.all([
+    supabase
+      .from("elements")
+      .select("is_self_tutor")
+      .eq("id", elementId)
+      .single(),
+    supabase
+      .from("element_asset_jobs")
+      .select("status, attempts, last_error_code, updated_at")
+      .eq("element_id", elementId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
-  if (error) return {};
+  if (profileResult.error) return {};
 
   return {
-    isSelfTutor: Boolean(data?.is_self_tutor),
+    isSelfTutor: Boolean(profileResult.data?.is_self_tutor),
+    ...(!assetJobResult.error && assetJobResult.data
+      ? {
+          assetJobStatus: assetJobResult.data.status,
+          assetJobAttempts: assetJobResult.data.attempts,
+          assetJobErrorCode: assetJobResult.data.last_error_code,
+          assetJobUpdatedAt: assetJobResult.data.updated_at,
+        }
+      : {}),
   };
 }
 
@@ -577,68 +585,31 @@ export async function setElementSelfTutorSupabase({
   };
 }
 
-export async function uploadElementDocumentSupabase({
+export async function cancelElementDocumentSupabase({
   elementId,
-  documentType,
-  file,
+  documentId,
 } = {}) {
   const normalizedElementId =
     typeof elementId === "string" ? elementId.trim() : "";
-  const normalizedDocumentType =
-    typeof documentType === "string" ? documentType.trim() : "";
+  const normalizedDocumentId =
+    typeof documentId === "string" ? documentId.trim() : "";
 
   if (!normalizedElementId) return validationError("Selecciona un elemento válido.");
-  if (!normalizedDocumentType) return validationError("Selecciona un tipo de documento válido.");
-  if (!(file instanceof File)) return validationError("Selecciona un archivo PDF.");
-  if (file.type !== "application/pdf") {
-    return validationError("Selecciona un documento en formato PDF.");
-  }
-  const signature = await file.slice(0, 5).text();
-  if (signature !== "%PDF-") {
-    return validationError("El archivo seleccionado no contiene un PDF válido.");
-  }
-  if (file.size > MAX_DOCUMENT_SIZE_BYTES) {
-    return validationError("El documento no debe superar 10 MB.");
-  }
+  if (!normalizedDocumentId) return validationError("Selecciona un documento válido.");
 
-  const requestId = createRequestId();
-  const fileName = safeFileName(file.name);
-  const objectPath = `${normalizedElementId}/${normalizedDocumentType}/${requestId}-${fileName}`;
-  const storageKey = `storage:${DOCUMENTS_BUCKET}/${objectPath}`;
+  const { error } = await supabase
+    .from("element_documents")
+    .update({ status: "cancelled" })
+    .eq("id", normalizedDocumentId)
+    .eq("element_id", normalizedElementId)
+    .eq("status", "active");
 
-  const uploadResult = await supabase.storage
-    .from(DOCUMENTS_BUCKET)
-    .upload(objectPath, file, {
-      contentType: "application/pdf",
-      upsert: false,
-    });
-
-  if (uploadResult.error) {
+  if (error) {
     return {
       ok: false,
-      code: uploadResult.error.name || "SUPABASE_STORAGE_ERROR",
-      message:
-        uploadResult.error.message ||
-        `No se pudo subir el documento al bucket ${DOCUMENTS_BUCKET}.`,
-      raw: uploadResult.error,
-    };
-  }
-
-  const metadataResult = await executeSupabaseRpc("register_element_document", {
-    p_request_id: requestId,
-    p_element_id: normalizedElementId,
-    p_document_type: normalizedDocumentType,
-    p_storage_key: storageKey,
-    p_original_filename: file.name,
-    p_mime_type: file.type,
-    p_size_bytes: file.size,
-  });
-
-  if (!metadataResult.ok) {
-    await supabase.storage.from(DOCUMENTS_BUCKET).remove([objectPath]);
-    return {
-      ...metadataResult,
-      message: "El archivo subió, pero no se pudo guardar su metadata.",
+      code: error.code || "SUPABASE_UPDATE_ERROR",
+      message: "No se pudo retirar el documento del expediente.",
+      raw: error,
     };
   }
 
@@ -649,8 +620,7 @@ export async function uploadElementDocumentSupabase({
 
   return {
     ...refreshed,
-    requestId,
-    message: "Documento cargado correctamente.",
+    message: "Documento eliminado correctamente.",
   };
 }
 

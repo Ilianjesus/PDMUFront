@@ -1,0 +1,261 @@
+.payments-control__search {
+  width: min(100%, 900px);
+  display: grid;
+  gap: var(--space-3);
+  margin: 0 auto var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-card);
+}
+
+.payments-control__search > div:first-child {
+  position: relative;
+}
+
+.payments-control__search > div:first-child > svg {
+  position: absolute;
+  top: calc(var(--control-height) / 2);
+  left: 0.8rem;
+  z-index: 2;
+  width: 19px;
+  height: 19px;
+  color: var(--color-accent-strong);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.payments-control__search .buscador-container {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+.payments-control__search .buscador-input { padding-left: 2.55rem; }
+
+.payments-control__selection {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.payments-control__selection span {
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.payments-control__selection strong { grid-column: 1; }
+.payments-control__selection a {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-accent-strong);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  text-decoration: none;
+}
+.payments-control__selection a svg { width: 16px; height: 16px; }
+.payments-control .empty-state { width: min(100%, 900px); margin-inline: auto; }
+
+.payments-inbox {
+  width: min(100%, 900px);
+  display: grid;
+  gap: var(--space-4);
+  margin: 0 auto;
+  padding: var(--space-5);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-card);
+}
+
+.payments-inbox__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.payments-inbox__header > div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.payments-inbox__header span {
+  color: var(--color-accent-strong);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+.payments-inbox__header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.payments-inbox__header button {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.payments-inbox__header button:hover,
+.payments-inbox__header button:focus-visible {
+  border-color: rgba(233, 185, 73, 0.45);
+  color: var(--color-accent-strong);
+}
+
+.payments-inbox__header button:disabled { opacity: 0.55; cursor: wait; }
+.payments-inbox__header button svg { width: 19px; height: 19px; }
+
+.payments-inbox__summary {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: var(--space-3);
+}
+
+.payments-inbox__summary > div {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-1) var(--space-2);
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-subtle);
+}
+
+.payments-inbox__summary svg {
+  grid-row: 1 / span 2;
+  width: 22px;
+  height: 22px;
+  color: var(--color-accent-strong);
+}
+
+.payments-inbox__summary span {
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-xs);
+}
+
+.payments-inbox__summary strong { font-size: 1.05rem; }
+
+.payments-inbox__list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.payments-inbox__list li { min-width: 0; }
+
+.payments-inbox__list button {
+  width: 100%;
+  min-height: 66px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: #141a20;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.payments-inbox__list button:hover,
+.payments-inbox__list button:focus-visible {
+  border-color: rgba(233, 185, 73, 0.45);
+  background: var(--color-surface-hover);
+}
+
+.payments-inbox__identity {
+  min-width: 0;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.payments-inbox__identity strong,
+.payments-inbox__identity small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.payments-inbox__identity small {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.payments-inbox__amount {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-accent-strong);
+}
+
+.payments-inbox__amount svg { width: 17px; height: 17px; }
+
+.payments-inbox .status-message {
+  margin: 0;
+}
+
+.payments-inbox .status-message button {
+  margin-left: var(--space-2);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.payments-inbox > .empty-state {
+  width: 100%;
+  min-height: 160px;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .payments-control__search { padding: var(--space-3); border-radius: var(--radius-md); }
+  .payments-control__selection { grid-template-columns: 1fr; }
+  .payments-control__selection a { grid-column: 1; grid-row: auto; margin-top: var(--space-2); }
+
+  .payments-inbox {
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+  }
+
+  .payments-inbox__summary { grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+  .payments-inbox__summary > div {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: center;
+    padding: var(--space-3);
+  }
+  .payments-inbox__summary svg { display: none; }
+  .payments-inbox__summary span { min-height: 2.4em; }
+  .payments-inbox__summary strong { white-space: nowrap; }
+  .payments-inbox__list button { padding: var(--space-3); }
+  .payments-inbox__amount strong { font-size: var(--font-size-sm); }
+}

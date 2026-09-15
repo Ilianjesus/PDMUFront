@@ -146,6 +146,20 @@ select public.register_element_document(
   1024
 );
 
+select public.queue_element_assets(
+  '00000000-0000-4000-8000-000000000021',
+  '00000000-0000-4000-8000-000000000010',
+  '[]'::jsonb
+);
+
+select public.queue_element_assets(
+  '00000000-0000-4000-8000-000000000021',
+  '00000000-0000-4000-8000-000000000010',
+  '[]'::jsonb
+);
+
+select public.claim_next_element_asset_job();
+
 select public.complete_element_assets(
   '00000000-0000-4000-8000-000000000021',
   '00000000-0000-4000-8000-000000000010',
@@ -183,6 +197,37 @@ begin
   ) <> 'drive-folder-test' then
     raise exception 'ASSET_FOLDER_PERSISTENCE_FAILED';
   end if;
+
+  if (
+    select status
+    from public.element_asset_jobs
+    where request_id = '00000000-0000-4000-8000-000000000021'
+  ) <> 'completed' then
+    raise exception 'ASSET_JOB_COMPLETION_FAILED';
+  end if;
+end
+$$;
+
+select public.queue_element_assets(
+  '00000000-0000-4000-8000-000000000022',
+  '00000000-0000-4000-8000-000000000010',
+  '[]'::jsonb
+);
+
+update public.element_asset_jobs
+set status = 'failed', attempts = 5, next_attempt_at = now()
+where request_id = '00000000-0000-4000-8000-000000000022';
+
+do $$
+declare
+  claimed jsonb;
+begin
+  claimed := public.claim_next_element_asset_job();
+  if claimed #>> '{job,requestId}' <> '00000000-0000-4000-8000-000000000022'
+    or (claimed #>> '{job,attempts}')::integer <> 6
+  then
+    raise exception 'ASSET_JOB_RETRY_RECOVERY_FAILED';
+  end if;
 end
 $$;
 
@@ -202,6 +247,8 @@ $$;
 set request.jwt.claim.role = 'service_role';
 select public.get_operations_digest();
 select public.get_document_compliance_queue();
+select (public.get_operational_statistics() ->> 'ok')::boolean as statistics_ok;
+select (public.get_dashboard_summary() ->> 'ok')::boolean as dashboard_ok;
 select count(*) as migration_objects
 from pg_proc p
 join pg_namespace n on n.oid = p.pronamespace

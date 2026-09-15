@@ -10,7 +10,7 @@ import {
   registerAttendance,
   saveAttendanceActivity,
 } from "../services/attendanceService";
-import { ChevronLeft, ChevronRight, ScanLine, X } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Plus, ScanLine, X } from "lucide-react";
 import "../styles/global.css";
 
 const ATTENDANCE_TYPES = [
@@ -153,6 +153,7 @@ export function RegistrarAsistencia() {
   const [attendanceSearchResetKey, setAttendanceSearchResetKey] = useState(0);
   const [attendanceStatus, setAttendanceStatus] = useState("present");
   const [busy, setBusy] = useState(false);
+  const [view, setView] = useState("today");
 
   const today = todayInputValue();
   const calendarDays = useMemo(() => buildCalendarDays(currentMonth), [currentMonth]);
@@ -164,6 +165,10 @@ export function RegistrarAsistencia() {
         return groups;
       }, {}),
     [sessions]
+  );
+  const todaySessions = useMemo(
+    () => uniqueSessionsByActivityDate(sessionsByDate[today] ?? []),
+    [sessionsByDate, today]
   );
 
   const selectedType = ATTENDANCE_TYPES.find((type) => type.id === typeForm.type);
@@ -246,6 +251,36 @@ export function RegistrarAsistencia() {
     setAttendanceSearchResetKey((current) => current + 1);
     setAttendanceStatus("present");
   };
+
+  useEffect(() => {
+    const modalOpen = Boolean(typeModalDate || historyModalDate || attendanceSession);
+    if (!modalOpen) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (event) => {
+      if (event.key !== "Escape" || busy) return;
+
+      if (attendanceSession) {
+        setAttendanceSession(null);
+        setElementoSeleccionado(null);
+        setAttendanceSearchResetKey((current) => current + 1);
+        setAttendanceStatus("present");
+      } else if (typeModalDate) {
+        setTypeModalDate(null);
+      } else {
+        setHistoryModalDate(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [attendanceSession, busy, historyModalDate, typeModalDate]);
 
   const openAttendanceSession = (session) => {
     setAttendanceSession(session);
@@ -374,9 +409,8 @@ export function RegistrarAsistencia() {
     <div className="attendance-entry page-shell">
       <div className="page-shell__inner">
         <PageHeader
-          eyebrow="Control de asistencia"
-          title="Asistencias"
-          infoTooltip="Selecciona un día del calendario, define el tipo y registra por búsqueda o QR."
+          title="Asistencia"
+          description="Abre una sesión de hoy y registra por QR o búsqueda manual."
         />
 
         {mensaje && (
@@ -385,6 +419,73 @@ export function RegistrarAsistencia() {
           </StatusMessage>
         )}
 
+        <div className="attendance-view-switch" role="group" aria-label="Vista de asistencia">
+          <button
+            type="button"
+            className={view === "today" ? "active" : ""}
+            onClick={() => setView("today")}
+            aria-pressed={view === "today"}
+          >
+            Hoy
+          </button>
+          <button
+            type="button"
+            className={view === "history" ? "active" : ""}
+            onClick={() => setView("history")}
+            aria-pressed={view === "history"}
+          >
+            <CalendarDays aria-hidden="true" /> Historial
+          </button>
+        </div>
+
+        {view === "today" && (
+          <section className="attendance-today" aria-labelledby="attendance-today-title">
+            <div className="attendance-today__header">
+              <div>
+                <span>{formatLongDate(today)}</span>
+                <h2 id="attendance-today-title">Sesiones de hoy</h2>
+              </div>
+              <button type="button" className="ui-button" onClick={() => openTypeModal(today)}>
+                <Plus aria-hidden="true" /> Nueva sesión
+              </button>
+            </div>
+
+            {loading ? (
+              <LoadingState compact label="Cargando sesiones de hoy..." />
+            ) : todaySessions.length > 0 ? (
+              <div className="attendance-today__list">
+                {todaySessions.map((session) => (
+                  <article className="attendance-today-session" key={session.sessionId}>
+                    <span className={`attendance-session-dot ${sessionCategoryClass(session)}`} aria-hidden="true" />
+                    <div>
+                      <strong>{session.activityName}</strong>
+                      <small>{session.categoryLabel}{session.startsAt ? ` · ${session.startsAt}` : ""}</small>
+                    </div>
+                    <div className="attendance-today-session__actions">
+                      <button type="button" className="ui-button ui-button--secondary" onClick={() => openAttendanceSession(session)}>
+                        Registro manual
+                      </button>
+                      <Link className="ui-button" to={`/asistencia/escaner?session=${session.sessionId}`}>
+                        <ScanLine aria-hidden="true" /> Escanear QR
+                      </Link>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="attendance-today__empty">
+                <ScanLine aria-hidden="true" />
+                <strong>No hay sesiones abiertas hoy</strong>
+                <p>Crea una sesión para comenzar a registrar asistencias.</p>
+                <button type="button" className="ui-button" onClick={() => openTypeModal(today)}>
+                  Crear primera sesión
+                </button>
+              </div>
+            )}
+          </section>
+        )}
+
+        {view === "history" && (
         <section className="attendance-calendar" aria-label="Calendario de asistencias">
           <div className="attendance-calendar__toolbar">
             <button
@@ -463,9 +564,16 @@ export function RegistrarAsistencia() {
             </div>
           )}
         </section>
+        )}
 
         {historyModalDate && (
-          <div className="attendance-modal-overlay" role="presentation">
+          <div
+            className="attendance-modal-overlay"
+            role="presentation"
+            onPointerDown={(event) => {
+              if (event.target === event.currentTarget) closeHistoryModal();
+            }}
+          >
             <section
               className="attendance-modal"
               role="dialog"
@@ -527,7 +635,13 @@ export function RegistrarAsistencia() {
         )}
 
         {typeModalDate && (
-          <div className="attendance-modal-overlay" role="presentation">
+          <div
+            className="attendance-modal-overlay"
+            role="presentation"
+            onPointerDown={(event) => {
+              if (event.target === event.currentTarget) closeTypeModal();
+            }}
+          >
             <section
               className="attendance-modal"
               role="dialog"
@@ -632,7 +746,13 @@ export function RegistrarAsistencia() {
         )}
 
         {attendanceSession && (
-          <div className="attendance-modal-overlay" role="presentation">
+          <div
+            className="attendance-modal-overlay"
+            role="presentation"
+            onPointerDown={(event) => {
+              if (event.target === event.currentTarget) closeAttendanceModal();
+            }}
+          >
             <section
               className="attendance-modal attendance-modal--wide"
               role="dialog"
@@ -656,7 +776,7 @@ export function RegistrarAsistencia() {
               <div className="attendance-register-actions">
                 <Link
                   className="ui-button"
-                  to={`/scanner?session=${attendanceSession.sessionId}`}
+                  to={`/asistencia/escaner?session=${attendanceSession.sessionId}`}
                 >
                   <ScanLine aria-hidden="true" />
                   Escanear QR

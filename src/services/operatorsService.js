@@ -1,7 +1,4 @@
-import { getOperatorsWorkflowUrl } from "../config/workflowEnv";
 import { supabase } from "./auth/supabaseClient";
-
-const WORKFLOW_TIMEOUT_MS = 15000;
 
 function normalizeOperator(row) {
   return {
@@ -37,7 +34,7 @@ export async function listOperators() {
   };
 }
 
-async function callOperatorsWorkflow(action, data) {
+async function callOperatorsFunction(action, data) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
   const accessToken = sessionData.session?.access_token;
   if (sessionError || !accessToken) {
@@ -48,63 +45,45 @@ async function callOperatorsWorkflow(action, data) {
     };
   }
 
-  const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), WORKFLOW_TIMEOUT_MS);
-  let response;
-
   try {
-    response = await fetch(getOperatorsWorkflowUrl(), {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        "X-Request-Id": crypto.randomUUID(),
-      },
-      body: JSON.stringify({
-        contractVersion: "1.0",
-        action,
-        data,
-      }),
-      signal: controller.signal,
+    const { data: payload, error } = await supabase.functions.invoke("manage-operators", {
+      body: { action, data },
+      headers: { Authorization: `Bearer ${accessToken}` },
     });
+
+    if (error) {
+      const failure = payload?.error || await error.context?.json?.().catch(() => null);
+      return {
+        ok: false,
+        code: failure?.error?.code || failure?.code || "OPERATOR_FUNCTION_ERROR",
+        message: failure?.error?.message || failure?.message ||
+          "No se pudo completar la operación de operadores.",
+        raw: error,
+      };
+    }
+    if (payload?.ok !== true) {
+      return {
+        ok: false,
+        code: payload?.error?.code || "OPERATOR_FUNCTION_ERROR",
+        message: payload?.error?.message || "No se pudo completar la operación de operadores.",
+        raw: payload,
+      };
+    }
+    return payload;
   } catch (error) {
     return {
       ok: false,
-      code:
-        error?.code === "WORKFLOW_CONFIG_ERROR"
-          ? error.code
-          : error?.name === "AbortError"
-          ? "WORKFLOW_TIMEOUT"
-          : "WORKFLOW_UNAVAILABLE",
-      message:
-        error?.code === "WORKFLOW_CONFIG_ERROR"
-          ? "La gestión de operadores no está configurada."
-          : error?.name === "AbortError"
-          ? "La operación tardó demasiado. Intenta nuevamente."
-          : "No se pudo conectar con la gestión de operadores.",
+      code: "OPERATOR_FUNCTION_UNAVAILABLE",
+      message: "No se pudo conectar con la gestión de operadores.",
       raw: error,
     };
-  } finally {
-    window.clearTimeout(timeout);
   }
-
-  const payload = await response.json().catch(() => null);
-  if (!response.ok || payload?.ok !== true) {
-    return {
-      ok: false,
-      code: payload?.error?.code || `HTTP_${response.status}`,
-      message: payload?.error?.message || "No se pudo completar la operación de operadores.",
-      raw: payload,
-    };
-  }
-
-  return payload;
 }
 
 export function inviteOperator(input) {
-  return callOperatorsWorkflow("operator.invite", input);
+  return callOperatorsFunction("operator.invite", input);
 }
 
 export function updateOperator(input) {
-  return callOperatorsWorkflow("operator.update", input);
+  return callOperatorsFunction("operator.update", input);
 }

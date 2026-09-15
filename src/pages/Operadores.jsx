@@ -62,7 +62,7 @@ export function Operadores() {
     }
     setInviteOpen(false);
     setInviteForm(EMPTY_INVITE);
-    setMessage("Operador invitado correctamente.");
+    setMessage("Cuenta habilitada. El operador ya puede solicitar su código de acceso.");
     await loadOperators();
   };
 
@@ -86,6 +86,7 @@ export function Operadores() {
     <div className="operators-page page-shell">
       <div className="page-shell__inner">
         <PageHeader
+          eyebrow="Administración"
           title="Operadores"
           description={`${activeCount} cuenta(s) activa(s) con acceso operativo.`}
           menuActions={[
@@ -182,9 +183,9 @@ export function Operadores() {
 
       <ConfirmDialog
         open={inviteOpen}
-        title="Invitar operador"
-        message="La cuenta quedará autorizada y podrá solicitar su código OTP con este correo."
-        confirmLabel="Enviar invitación"
+        title="Habilitar operador"
+        message="Se habilitará la cuenta. El operador podrá solicitar su código OTP con este correo."
+        confirmLabel="Habilitar cuenta"
         cancelLabel="Cancelar"
         busy={saving}
         onConfirm={submitInvite}

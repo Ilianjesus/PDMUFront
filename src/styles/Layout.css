@@ -19,12 +19,38 @@
   z-index: 1200;
   height: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom));
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   padding: 0.4rem 0.2rem env(safe-area-inset-bottom);
   border-top: 1px solid var(--color-border);
   background: rgba(17, 29, 45, 0.98);
   box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.22);
   backdrop-filter: blur(14px);
+}
+
+.app-nav__primary-action {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin: var(--space-3) 0.35rem 0;
+  padding: 0.65rem 0.8rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  color: #17130a;
+  font-size: var(--font-size-sm);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.app-nav__primary-action:hover,
+.app-nav__primary-action:focus-visible {
+  filter: brightness(1.06);
+}
+
+.app-nav__primary-action svg {
+  width: 18px;
+  height: 18px;
 }
 
 .app-nav__item {

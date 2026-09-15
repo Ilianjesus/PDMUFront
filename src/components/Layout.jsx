@@ -1,8 +1,10 @@
 import { createElement } from "react";
-import { Outlet, NavLink } from "react-router-dom";
+import { Link, Outlet, NavLink, useLocation } from "react-router-dom";
 import {
   Home as HomeIcon,
   ClipboardCheck,
+  CreditCard,
+  Menu,
   UserPlus,
   ShieldCheck,
   BarChart3,
@@ -12,18 +14,23 @@ import "../styles/Layout.css";
 import { useAuth } from "../hooks/useAuth";
 
 const primaryItems = [
-  { to: "/home", label: "Inicio", icon: HomeIcon },
+  { to: "/inicio", label: "Inicio", icon: HomeIcon },
+  { to: "/asistencia", label: "Asistencia", icon: ClipboardCheck },
   { to: "/elementos", label: "Elementos", icon: ShieldCheck },
-  { to: "/inscripciones", label: "Inscripciones", icon: UserPlus },
-  { to: "/asistencias", label: "Asistencias", icon: ClipboardCheck },
+  { to: "/pagos", label: "Pagos", icon: CreditCard },
 ];
 
-function NavigationItem({ to, label, icon, secondary = false }) {
+const mobileItems = [
+  ...primaryItems,
+  { to: "/mas", label: "Gestión", icon: Menu },
+];
+
+function NavigationItem({ to, label, icon, secondary = false, active = false }) {
   return (
     <NavLink
       to={to}
       className={({ isActive }) =>
-        `app-nav__item${isActive ? " app-nav__item--active" : ""}${secondary ? " app-nav__item--secondary" : ""}`
+        `app-nav__item${isActive || active ? " app-nav__item--active" : ""}${secondary ? " app-nav__item--secondary" : ""}`
       }
     >
       {createElement(icon, { "aria-hidden": true })}
@@ -35,6 +42,11 @@ function NavigationItem({ to, label, icon, secondary = false }) {
 
 export function Layout() {
   const { operatorProfile } = useAuth();
+  const location = useLocation();
+  const moreIsActive =
+    location.pathname.startsWith("/mas") ||
+    location.pathname.startsWith("/reportes") ||
+    location.pathname.startsWith("/administracion");
 
   return (
     <div className="app-layout">
@@ -44,22 +56,31 @@ export function Layout() {
           {primaryItems.map((item) => (
             <NavigationItem key={item.to} {...item} />
           ))}
+          <Link className="app-nav__primary-action" to="/elementos/nuevo">
+            <UserPlus aria-hidden="true" />
+            <span>Nueva inscripción</span>
+          </Link>
           <span className="app-nav__section-label app-nav__section-label--secondary">
             Análisis
           </span>
           <NavigationItem
-            to="/estadisticas"
-            label="Estadísticas"
+            to="/reportes"
+            label="Reportes"
             icon={BarChart3}
             secondary
           />
           {operatorProfile?.role === "admin" && (
-            <NavigationItem
-              to="/operadores"
-              label="Operadores"
-              icon={UsersRound}
-              secondary
-            />
+            <>
+              <span className="app-nav__section-label app-nav__section-label--secondary">
+                Administración
+              </span>
+              <NavigationItem
+                to="/administracion/operadores"
+                label="Operadores"
+                icon={UsersRound}
+                secondary
+              />
+            </>
           )}
         </nav>
         <p className="app-sidebar__footer">Pentathlon Deportivo Militarizado Universitario</p>
@@ -70,8 +91,12 @@ export function Layout() {
       </main>
 
       <nav className="mobile-nav" aria-label="Navegación principal">
-        {primaryItems.map((item) => (
-          <NavigationItem key={item.to} {...item} />
+        {mobileItems.map((item) => (
+          <NavigationItem
+            key={item.to}
+            {...item}
+            active={item.to === "/mas" && moreIsActive}
+          />
         ))}
       </nav>
     </div>

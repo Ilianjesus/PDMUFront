@@ -21,8 +21,8 @@ export function PageHeader({
   const [menuOpen, setMenuOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState("");
-  const adminActions = operatorProfile?.role === "admin" && location.pathname !== "/operadores"
-    ? [{ id: "global-operators", label: "Operadores", icon: UsersRound, onSelect: () => navigate("/operadores") }]
+  const adminActions = operatorProfile?.role === "admin" && location.pathname !== "/administracion/operadores"
+    ? [{ id: "global-operators", label: "Operadores", icon: UsersRound, onSelect: () => navigate("/administracion/operadores") }]
     : [];
   const visibleMenuActions = [...menuActions, ...adminActions];
   const hasMenuActions = visibleMenuActions.length > 0;

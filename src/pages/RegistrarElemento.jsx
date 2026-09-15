@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, Check, FileText, FileUp, Trash2 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowRight, Camera, Check, FileText, FileUp, RotateCcw, Trash2 } from "lucide-react";
 import { registerElement } from "../services/elementsService";
 import { REGISTRATION_DOCUMENTS } from "../constants/registrationDocuments";
 import { createRequestId } from "../services/supabaseBusiness/requestId";
 import { PageHeader } from "../components/ui/PageHeader";
 import { BirthDateSelector } from "../components/ui/BirthDateSelector";
-import { StatusMessage } from "../components/ui/StatusMessage";
+import { Toast } from "../components/ui/Toast";
 import { calculateAge, getElementGroup } from "../utils/elementGroups";
 import "../styles/global.css";
 
@@ -98,30 +99,42 @@ function DocumentCapture({ document, file, loading, onChange, onRemove }) {
     return () => URL.revokeObjectURL(nextPreviewUrl);
   }, [file]);
 
+  const captureContent = (
+    <>
+      <span className="document-capture__preview" aria-hidden="true">
+        {previewUrl ? (
+          <img src={previewUrl} alt="" />
+        ) : file ? (
+          <FileText />
+        ) : (
+          <Camera />
+        )}
+      </span>
+      <span className="document-capture__copy">
+        <strong>{document.label}</strong>
+        <small>{file?.name || "Tomar foto"}</small>
+      </span>
+      {file && <Check className="document-capture__check" aria-hidden="true" />}
+    </>
+  );
+
   return (
     <article className={`document-capture${file ? " is-ready" : ""}`}>
-      <button
-        type="button"
-        className="document-capture__primary"
-        onClick={() => cameraInputRef.current?.click()}
-        disabled={loading}
-        aria-label={`${file ? "Volver a fotografiar" : "Fotografiar"} ${document.label}`}
-      >
-        <span className="document-capture__preview" aria-hidden="true">
-          {previewUrl ? (
-            <img src={previewUrl} alt="" />
-          ) : file ? (
-            <FileText />
-          ) : (
-            <Camera />
-          )}
-        </span>
-        <span className="document-capture__copy">
-          <strong>{document.label}</strong>
-          <small>{file?.name || "Tomar foto"}</small>
-        </span>
-        {file && <Check className="document-capture__check" aria-hidden="true" />}
-      </button>
+      {file ? (
+        <div className="document-capture__primary document-capture__primary--status">
+          {captureContent}
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="document-capture__primary"
+          onClick={() => cameraInputRef.current?.click()}
+          disabled={loading}
+          aria-label={`Fotografiar ${document.label}`}
+        >
+          {captureContent}
+        </button>
+      )}
 
       <input
         ref={cameraInputRef}
@@ -134,27 +147,40 @@ function DocumentCapture({ document, file, loading, onChange, onRemove }) {
       />
 
       <div className="document-capture__actions">
-        <label className="document-capture__file" title="Adjuntar archivo">
-          <FileUp aria-hidden="true" />
-          <span>Adjuntar</span>
-          <input
-            type="file"
-            accept="image/*,application/pdf"
-            onChange={(event) => onChange(event, document.key, "file")}
-            disabled={loading}
-          />
-        </label>
-        {file && (
-          <button
-            type="button"
-            className="document-capture__remove"
-            onClick={() => onRemove(document.key)}
-            disabled={loading}
-            title="Quitar documento"
-            aria-label={`Quitar ${document.label}`}
-          >
-            <Trash2 aria-hidden="true" />
-          </button>
+        {file ? (
+          <>
+            <button
+              type="button"
+              className="document-capture__retake"
+              onClick={() => cameraInputRef.current?.click()}
+              disabled={loading}
+              aria-label={`Repetir foto de ${document.label}`}
+            >
+              <Camera aria-hidden="true" />
+              <span>Repetir</span>
+            </button>
+            <button
+              type="button"
+              className="document-capture__remove"
+              onClick={() => onRemove(document.key)}
+              disabled={loading}
+              aria-label={`Quitar ${document.label}`}
+            >
+              <Trash2 aria-hidden="true" />
+              <span>Quitar</span>
+            </button>
+          </>
+        ) : (
+          <label className="document-capture__file" title="Seleccionar archivo">
+            <FileUp aria-hidden="true" />
+            <span>Archivo</span>
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              onChange={(event) => onChange(event, document.key, "file")}
+              disabled={loading}
+            />
+          </label>
         )}
       </div>
     </article>
@@ -169,15 +195,32 @@ function getLocalDateValue(date = new Date()) {
 }
 
 export function RegistrarElemento() {
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [feedback, setFeedback] = useState(null);
+  const [toast, setToast] = useState(null);
   const [selfTutor, setSelfTutor] = useState(false);
+  const [completedElement, setCompletedElement] = useState(null);
   const registrationRequestId = useRef(createRequestId());
   const assetsRequestId = useRef(createRequestId());
+  const toastTimerRef = useRef(null);
 
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
   const [files, setFiles] = useState(() => createInitialFiles());
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [step]);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    };
+  }, []);
 
   const age = calculateAge(formData.fechaNacimiento);
   const elementGroup = getElementGroup({
@@ -186,6 +229,7 @@ export function RegistrarElemento() {
   });
   const isAdult = age !== null && age >= 18;
   const fullName = getFullName(formData);
+  const capturedDocumentCount = Object.values(files).filter(Boolean).length;
   const handleChange = (e) => {
     const { name, value } = e.target;
     const nextAge = name === "fechaNacimiento" ? calculateAge(value) : age;
@@ -326,7 +370,7 @@ export function RegistrarElemento() {
       }
     }
 
-    setStep((previous) => Math.min(previous + 1, 3));
+    setStep((previous) => Math.min(previous + 1, 4));
   };
   const handleBack = () => setStep((prev) => prev - 1);
 
@@ -334,17 +378,33 @@ export function RegistrarElemento() {
     setFormData(INITIAL_FORM_DATA);
     setFiles(createInitialFiles());
     setSelfTutor(false);
+    setCompletedElement(null);
     setStep(1);
     registrationRequestId.current = createRequestId();
     assetsRequestId.current = createRequestId();
   };
 
+  const dismissToast = () => {
+    if (toastTimerRef.current) {
+      window.clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+    setToast(null);
+  };
+
   const showAlert = ({ icon, title, text }) => {
-    setFeedback({
+    if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+
+    setToast({
+      id: createRequestId(),
       variant: icon === "error" ? "error" : icon === "success" ? "success" : "warning",
-      text: `${title}. ${text}`,
+      title,
+      text,
     });
-    window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+    toastTimerRef.current = window.setTimeout(() => {
+      setToast(null);
+      toastTimerRef.current = null;
+    }, icon === "error" ? 9000 : 6500);
     return Promise.resolve();
   };
 
@@ -393,31 +453,40 @@ export function RegistrarElemento() {
       );
 
       if (result.ok) {
-        await showAlertAfterLoading({
-          icon: "success",
-          title: result.data?.reactivated ? "Inscripción reactivada" : "Perfil creado",
-          text: result.message || "La inscripción se completó correctamente.",
+        const isProcessing = result.registrationStatus === "processing";
+        if (!isProcessing) {
+          await showAlertAfterLoading({
+            icon: "warning",
+            title: "Documentación pendiente",
+            text:
+              result.message ||
+              "No se pudo programar la documentación. Intenta nuevamente.",
+          });
+        }
+        setCompletedElement({
+          id: result.data?.elementId,
+          name: fullName,
+          message: result.message,
         });
-        resetForm();
       } else if (result.code === "ALREADY_EXISTS") {
         await showAlertAfterLoading({
           icon: "warning",
-          title: "Elemento existente",
-          text: result.message || "El elemento ya existe en el sistema.",
+          title: "Elemento ya registrado",
+          text: result.message || "Ya existe una inscripción activa con esos datos.",
         });
       } else {
         await showAlertAfterLoading({
           icon: "error",
-          title: "No se pudo completar",
-          text: result.message || "La inscripción no pudo completarse.",
+          title: "No se guardó la inscripción",
+          text: result.message || "Revisa los datos e inténtalo nuevamente.",
         });
       }
     } catch (error) {
       console.error("Error:", error);
       await showAlertAfterLoading({
         icon: "error",
-        title: "Error de conexión",
-        text: "Hubo un problema al conectar con el servidor.",
+        title: "No se pudo conectar",
+        text: "Intenta nuevamente en unos segundos.",
       });
     } finally {
       setLoading(false);
@@ -429,35 +498,59 @@ export function RegistrarElemento() {
       {loading && (
         <div className="loading-overlay" role="status" aria-live="polite">
           <div className="spinner"></div>
-          <span>Enviando inscripción...</span>
+          <span>Guardando expediente...</span>
         </div>
       )}
+      <Toast toast={toast} onDismiss={dismissToast} />
 
       <div className="page-shell__inner">
         <PageHeader
-          eyebrow="Inscripciones"
-          title="Registrar elemento"
-          infoTooltip="Captura el expediente inicial en tres pasos. Los campos obligatorios se validan antes de continuar."
+          eyebrow="Elementos"
+          title="Nueva inscripción"
+          description="Captura, revisa y confirma el expediente antes de guardarlo."
+          onBack={() => navigate("/elementos")}
+          backLabel="Volver"
         />
 
-        {feedback && (
-          <StatusMessage variant={feedback.variant} className="registration-feedback">
-            {feedback.text}
-          </StatusMessage>
-        )}
-
         <div className="registration-workspace">
-          <ol className="step-list" aria-label={`Paso ${step} de 3`}>
-            {["Elemento", "Contacto", "Documentos"].map((label, index) => {
+          {completedElement ? (
+            <section className="registration-success" aria-labelledby="registration-success-title">
+              <span className="registration-success__icon"><Check aria-hidden="true" /></span>
+              <p>Inscripción guardada</p>
+              <h2 id="registration-success-title">{completedElement.name}</h2>
+              <span>{completedElement.message || "El expediente quedó registrado correctamente."}</span>
+              <div className="registration-success__actions">
+                {completedElement.id && (
+                  <>
+                    <Link className="ui-button" to={`/elementos/${completedElement.id}/informacion`}>
+                      Abrir expediente <ArrowRight aria-hidden="true" />
+                    </Link>
+                    <Link className="ui-button ui-button--secondary" to={`/pagos?elemento=${completedElement.id}`}>
+                      Registrar primer pago
+                    </Link>
+                  </>
+                )}
+                <button type="button" className="ui-button ui-button--secondary" onClick={resetForm}>
+                  <RotateCcw aria-hidden="true" /> Nueva inscripción
+                </button>
+              </div>
+            </section>
+          ) : (
+          <>
+          <ol className="step-list" aria-label={`Progreso de inscripción, paso ${step} de 4`}>
+            {["Elemento", "Responsable", "Documentos", "Confirmar"].map((label, index) => {
               const stepNumber = index + 1;
+              const isComplete = step > stepNumber;
               return (
                 <li
                   key={label}
-                  className={`step-item${step === stepNumber ? " active" : ""}${step > stepNumber ? " complete" : ""}`}
+                  className={`step-item${step === stepNumber ? " active" : ""}${isComplete ? " complete" : ""}`}
                   aria-current={step === stepNumber ? "step" : undefined}
                 >
-                  <span className="step-indicator">{stepNumber}</span>
-                  <span>{label}</span>
+                  <span className="step-indicator" aria-hidden="true">
+                    {isComplete ? <Check /> : stepNumber}
+                  </span>
+                  <span className="step-label">{label}</span>
                 </li>
               );
             })}
@@ -643,7 +736,9 @@ export function RegistrarElemento() {
           <>
             <div>
               <h2 className="registrar-subtitle">Documentos</h2>
-              <p className="registrar-helper-text" role="status">Toca un documento para fotografiarlo.</p>
+              <p className="registrar-helper-text" role="status">
+                {capturedDocumentCount} de {REGISTRATION_DOCUMENTS.length} documentos capturados. Toca uno para fotografiarlo.
+              </p>
             </div>
 
             <div className="document-checklist" aria-label="Documentos de inscripción">
@@ -669,17 +764,41 @@ export function RegistrarElemento() {
                 Atrás
               </button>
 
-              <button
-                className="registrar-button"
-                type="submit"
-                disabled={loading}
-              >
+              <button className="registrar-button" type="button" onClick={handleNext} disabled={loading}>
+                Revisar inscripción
+              </button>
+            </div>
+          </>
+        )}
+
+        {step === 4 && (
+          <>
+            <div>
+              <h2 className="registrar-subtitle">Revisar y confirmar</h2>
+              <p className="registrar-helper-text">Confirma los datos antes de crear el expediente.</p>
+            </div>
+
+            <dl className="registration-review">
+              <div><dt>Elemento</dt><dd>{fullName}</dd></div>
+              <div><dt>Fecha de nacimiento</dt><dd>{formData.fechaNacimiento}</dd></div>
+              <div><dt>Sexo</dt><dd>{formData.sexo}</dd></div>
+              <div><dt>Grupo</dt><dd>{elementGroup?.label || "Pendiente"}</dd></div>
+              <div><dt>Responsable</dt><dd>{formData.tutor}</dd></div>
+              <div><dt>Teléfono</dt><dd>{formData.telefonoTutor}</dd></div>
+              <div><dt>Documentos</dt><dd>{capturedDocumentCount} capturados</dd></div>
+            </dl>
+
+            <div className="registrar-actions">
+              <button type="button" className="registrar-button registrar-button--outline" onClick={handleBack} disabled={loading}>Atrás</button>
+              <button className="registrar-button" type="submit" disabled={loading}>
                 {loading ? "Creando expediente..." : "Crear expediente"}
               </button>
             </div>
           </>
         )}
           </form>
+          </>
+          )}
         </div>
       </div>
     </div>

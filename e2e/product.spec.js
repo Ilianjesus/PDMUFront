@@ -232,6 +232,23 @@ async function mockSupabase(
   page,
   { otpStatus = 200, otpErrorCode = "hook_timeout" } = {}
 ) {
+  let queuedAssetJob = null;
+  const stagedFiles = new Map();
+  let elementDocuments = [
+    {
+      id: "55555555-5555-4555-8555-555555555555",
+      document_type: "guardian_id",
+      drive_file_id: "drive-file-ine-e2e",
+      drive_url: "https://drive.test/ine.pdf",
+      original_filename: "ine-tutor.pdf",
+      mime_type: "application/pdf",
+      size_bytes: 2048,
+      status: "active",
+      version: 1,
+      uploaded_at: nowIso,
+    },
+  ];
+
   await page.route(`${supabaseUrl}/**`, async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -256,7 +273,74 @@ async function mockSupabase(
     }
     if (url.pathname.startsWith("/rest/v1/rpc/")) {
       const functionName = url.pathname.split("/").pop();
+
+      if (functionName === "queue_element_assets") {
+        const body = request.postDataJSON();
+        queuedAssetJob = {
+          requestId: body.p_request_id,
+          elementId: body.p_element_id,
+          elementCode: "PDMU-20260815-E2E",
+          folderName: "MURILLO FLORES AURA KRISTHELL",
+          documents: body.p_documents,
+          attempts: 0,
+        };
+        await route.fulfill({
+          status: 200,
+          json: { ok: true, job: { ...queuedAssetJob, status: "queued" } },
+        });
+        return;
+      }
+
+      if (functionName === "claim_next_element_asset_job") {
+        const job = queuedAssetJob;
+        queuedAssetJob = null;
+        await route.fulfill({
+          status: 200,
+          json: { ok: true, job: job ? { ...job, attempts: 1 } : null },
+        });
+        return;
+      }
+
+      if (functionName === "fail_element_asset_job") {
+        await route.fulfill({
+          status: 200,
+          json: { ok: true, job: { status: "failed" } },
+        });
+        return;
+      }
+
       await route.fulfill({ status: 200, json: rpcPayload(functionName) });
+      return;
+    }
+    if (url.pathname.startsWith("/storage/v1/object/element-intake/")) {
+      const path = decodeURIComponent(
+        url.pathname.replace("/storage/v1/object/element-intake/", "")
+      );
+      if (request.method() === "GET") {
+        await route.fulfill({
+          status: 200,
+          body: stagedFiles.get(path) || Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
+          headers: { "Content-Type": "image/jpeg" },
+        });
+      } else {
+        stagedFiles.set(path, request.postDataBuffer() || Buffer.from([]));
+        await route.fulfill({ status: 200, json: { Key: path } });
+      }
+      return;
+    }
+    if (url.pathname.startsWith("/storage/v1/object/authenticated/element-intake/")) {
+      const path = decodeURIComponent(
+        url.pathname.replace("/storage/v1/object/authenticated/element-intake/", "")
+      );
+      await route.fulfill({
+        status: 200,
+        body: stagedFiles.get(path) || Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
+        headers: { "Content-Type": "image/jpeg" },
+      });
+      return;
+    }
+    if (url.pathname === "/storage/v1/object/element-intake") {
+      await route.fulfill({ status: 200, json: [] });
       return;
     }
     if (url.pathname === "/rest/v1/operator_profiles") {
@@ -275,7 +359,13 @@ async function mockSupabase(
       return;
     }
     if (url.pathname === "/rest/v1/element_documents") {
-      await route.fulfill({ status: 200, json: [] });
+      if (request.method() === "PATCH") {
+        const body = request.postDataJSON();
+        if (body.status === "cancelled") elementDocuments = [];
+        await route.fulfill({ status: 200, json: [] });
+      } else {
+        await route.fulfill({ status: 200, json: elementDocuments });
+      }
       return;
     }
     if (url.pathname === "/rest/v1/elements") {
@@ -362,7 +452,7 @@ test.describe("producto autenticado", () => {
   });
 
   test("mantiene el inicio legible y el encabezado fijo", async ({ page }, testInfo) => {
-    await page.goto("#/home");
+    await page.goto("#/inicio");
     await expect(page.getByRole("heading", { name: "Inicio" })).toBeVisible();
     await expect(page.getByText("Elementos activos")).toBeVisible();
     await expect(page.getByText("5", { exact: true })).toBeVisible();
@@ -384,6 +474,23 @@ test.describe("producto autenticado", () => {
     const listSurface = page.locator(".panel-list-surface");
     const beforeSearch = await listSurface.boundingBox();
 
+    await expect(page.getByRole("region", { name: "Filtros de elementos" })).toBeHidden();
+    await page.getByRole("button", { name: "Abrir filtros" }).click();
+    const filters = page.getByRole("region", { name: "Filtros de elementos" });
+    await expect(filters).toBeVisible();
+    await filters.getByRole("button", { name: "Varonil" }).click();
+    await filters.getByRole("button", { name: "Mayor" }).click();
+    await expect(
+      page.getByRole("button", { name: "Filtros activos: Varonil · Mayor" })
+    ).toBeVisible();
+    const withFiltersOpen = await listSurface.boundingBox();
+    expect(Math.round(withFiltersOpen.y)).toBe(Math.round(beforeSearch.y));
+    await page.screenshot({ path: testInfo.outputPath("elements-filters.png"), fullPage: false });
+    await filters.getByRole("button", { name: "Restablecer" }).click();
+    await filters.getByRole("button", { name: "Cerrar filtros" }).click();
+    await expect(page.getByRole("button", { name: "Abrir filtros" })).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath("elements-directory.png"), fullPage: false });
+
     const search = page.getByRole("textbox", { name: "Buscar elemento" });
     await search.fill("Aura");
     await expect(page.locator(".buscador-lista")).toBeVisible();
@@ -393,7 +500,7 @@ test.describe("producto autenticado", () => {
     await expect(search).toHaveValue("");
 
     await page.getByRole("button", { name: /Aura Kristhell Murillo Flores/ }).last().click();
-    await expect(page.getByRole("heading", { name: "Elemento" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Elemento", exact: true })).toBeVisible();
     await expect(page.locator(".page-header")).toContainText("Aura Kristhell Murillo Flores");
     await expect(page.locator('input[name="Sexo"]')).toHaveValue("Femenino");
     expect(await page.evaluate(() => window.scrollY)).toBeLessThan(3);
@@ -409,7 +516,7 @@ test.describe("producto autenticado", () => {
   });
 
   test("presenta navegación adecuada para cada tamaño", async ({ page, isMobile }) => {
-    await page.goto("#/home");
+    await page.goto("#/inicio");
     if (isMobile) {
       await expect(page.locator(".mobile-nav")).toBeVisible();
       await expect(page.locator(".app-sidebar")).toBeHidden();
@@ -421,10 +528,93 @@ test.describe("producto autenticado", () => {
     await assertNoHorizontalOverflow(page);
   });
 
+  test("abre el selector de asistencia como modal completo y centrado", async ({ page }, testInfo) => {
+    await page.goto("#/asistencia");
+    await expect(page.getByRole("heading", { name: "Asistencia", exact: true })).toBeVisible();
+    await expect(page.getByText("Control de asistencia", { exact: true })).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Nueva sesión" }).click();
+    const dialog = page.getByRole("dialog", { name: "Tipo de asistencia" });
+    await expect(dialog).toBeVisible();
+
+    const box = await dialog.boundingBox();
+    const viewport = page.viewportSize();
+    expect(box.y).toBeGreaterThan(8);
+    expect(box.y + box.height).toBeLessThan(viewport.height - 8);
+    expect(Math.abs(box.y + box.height / 2 - viewport.height / 2)).toBeLessThan(50);
+    await assertNoHorizontalOverflow(page);
+    await page.screenshot({ path: testInfo.outputPath("attendance-modal.png"), fullPage: false });
+  });
+
+  test("permite fotografiar y eliminar documentos del expediente", async ({ page }, testInfo) => {
+    let deletePayload = null;
+    let uploadedPhoto = false;
+    await page.route(elementAssetsWorkflowUrl, async (route) => {
+      const request = route.request();
+      if (request.headers()["content-type"]?.includes("application/json")) {
+        deletePayload = request.postDataJSON();
+      } else {
+        uploadedPhoto = request.postData()?.includes("proof_of_address") ?? false;
+      }
+      await route.fulfill({
+        status: 200,
+        json: {
+          ok: true,
+          requestId: "66666666-6666-4666-8666-666666666666",
+          data: {
+            driveFolder: { id: "drive-folder-e2e", url: "https://drive.test/folder" },
+            qr: { value: `pdmu:element:${ELEMENT_ID}` },
+            documents: [],
+          },
+        },
+      });
+    });
+
+    await page.goto("#/elementos");
+    await page.getByRole("button", { name: /Aura Kristhell Murillo Flores/ }).last().click();
+    await page.getByRole("button", { name: "Editar Nombre(s)" }).click();
+    await page.screenshot({ path: testInfo.outputPath("element-edit-actions.png"), fullPage: false });
+    await page.getByRole("button", { name: "Cancelar" }).click();
+    await expect(page.getByRole("button", { name: "Eliminar INE del tutor" })).toBeVisible();
+    await page.getByRole("button", { name: "Eliminar INE del tutor" }).scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath("element-documents.png"), fullPage: false });
+    await page.getByRole("button", { name: "Eliminar INE del tutor" }).click();
+    const deleteDialog = page.getByRole("dialog", { name: "Eliminar documento" });
+    await expect(deleteDialog).toBeVisible();
+    await deleteDialog.getByRole("button", { name: "Eliminar" }).click();
+    await expect(page.getByText("Documento eliminado correctamente.")).toBeVisible();
+    expect(deletePayload).toMatchObject({
+      action: "element.document.delete",
+      elementId: ELEMENT_ID,
+      fileId: "drive-file-ine-e2e",
+    });
+
+    const addressCard = page.locator(".document-group").filter({
+      has: page.getByText("Comprobante de domicilio", { exact: true }),
+    });
+    const cameraInput = addressCard.locator('input[capture="environment"]');
+    await expect(cameraInput).toHaveAttribute("accept", "image/*");
+    await cameraInput.setInputFiles({
+      name: "domicilio.jpg",
+      mimeType: "image/jpeg",
+      buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
+    });
+    await addressCard.getByRole("button", { name: "Procesar" }).click();
+    await expect(page.getByText(/Foto recibida/)).toBeVisible();
+    await expect.poll(() => uploadedPhoto).toBe(true);
+    await assertNoHorizontalOverflow(page);
+  });
+
   test("completa la inscripción móvil con decisiones simples y cámara primaria", async ({ page }, testInfo) => {
     let workflowRequest = null;
+    let workflowCompleted = false;
+    let releaseWorkflow;
+    const workflowGate = new Promise((resolve) => {
+      releaseWorkflow = resolve;
+    });
     await page.route(elementAssetsWorkflowUrl, async (route) => {
       workflowRequest = route.request();
+      await workflowGate;
       await route.fulfill({
         status: 200,
         json: {
@@ -450,10 +640,11 @@ test.describe("producto autenticado", () => {
           },
         },
       });
+      workflowCompleted = true;
     });
 
-    await page.goto("#/inscripciones");
-    await expect(page.getByRole("heading", { name: "Registrar elemento" })).toBeVisible();
+    await page.goto("#/elementos/nuevo");
+    await expect(page.getByRole("heading", { name: "Nueva inscripción" })).toBeVisible();
     await expect(page.getByRole("radio", { name: "Femenino" })).toBeVisible();
     await expect(page.locator('select[name="sexo"]')).toHaveCount(0);
 
@@ -465,10 +656,12 @@ test.describe("producto autenticado", () => {
     await page.getByLabel("Mes").selectOption("05");
     await page.getByLabel("Día").selectOption("14");
     await page.getByRole("button", { name: "Siguiente" }).click();
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(3);
 
     await page.getByRole("button", { name: /El elemento/ }).click();
     await page.getByLabel("Teléfono de contacto (10 dígitos)").fill("5512345678");
     await page.getByRole("button", { name: "Siguiente" }).click();
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(3);
 
     const cameraInput = page.locator('input[capture="environment"]').first();
     await expect(cameraInput).toHaveAttribute("accept", "image/*");
@@ -478,19 +671,31 @@ test.describe("producto autenticado", () => {
       mimeType: "image/jpeg",
       buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
     });
+    const birthCertificate = page.locator(".document-capture").first();
     await expect(
-      page.getByRole("button", { name: "Volver a fotografiar Acta de nacimiento" })
+      birthCertificate.getByRole("button", { name: "Repetir foto de Acta de nacimiento" })
     ).toBeVisible();
+    await expect(
+      birthCertificate.getByRole("button", { name: "Quitar Acta de nacimiento" })
+    ).toBeVisible();
+    await expect(birthCertificate.getByText("Archivo", { exact: true })).toHaveCount(0);
     await page.screenshot({
       path: testInfo.outputPath("registration-documents.png"),
       fullPage: false,
     });
+    await page.getByRole("button", { name: "Revisar inscripción" }).click();
+    await expect(page.getByRole("heading", { name: "Revisar y confirmar" })).toBeVisible();
     await page.getByRole("button", { name: "Crear expediente" }).click();
 
-    await expect(page.getByText(/Perfil creado/)).toBeVisible();
-    expect(workflowRequest).not.toBeNull();
+    await expect(page.getByLabel("Aura Kristhell Murillo Flores")).toContainText(
+      "Inscripción guardada"
+    );
+    await expect(page.locator(".loading-overlay")).toHaveCount(0);
+    await expect.poll(() => workflowRequest !== null).toBe(true);
     expect(workflowRequest.headers()["content-type"]).toContain("multipart/form-data");
     expect(workflowRequest.postData()).toContain("MURILLO FLORES AURA KRISTHELL");
+    releaseWorkflow();
+    await expect.poll(() => workflowCompleted).toBe(true);
     await assertNoHorizontalOverflow(page);
     await page.screenshot({ path: testInfo.outputPath("registration.png"), fullPage: false });
   });

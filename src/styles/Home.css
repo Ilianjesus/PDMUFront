@@ -11,6 +11,46 @@
   box-shadow: 0 14px 36px rgba(0, 0, 0, 0.22);
 }
 
+.home-quick-actions {
+  margin-bottom: var(--space-5);
+}
+
+.home-quick-actions__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.home-action {
+  min-height: 88px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.home-action:hover,
+.home-action:focus-visible {
+  border-color: rgba(233, 185, 73, 0.45);
+  background: var(--color-surface-hover);
+}
+
+.home-action--primary {
+  border-color: rgba(233, 185, 73, 0.42);
+  background: var(--color-accent-soft);
+}
+
+.home-action > svg:first-child { width: 24px; height: 24px; color: var(--color-accent-strong); }
+.home-action > svg:last-child { width: 18px; height: 18px; color: var(--color-text-subtle); }
+.home-action span { display: grid; gap: var(--space-1); }
+.home-action small { color: var(--color-text-muted); font-size: var(--font-size-sm); }
+
 .home-section--split {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -61,13 +101,20 @@
 }
 
 .summary-card {
+  position: relative;
   min-height: 112px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: var(--space-3);
   padding: var(--space-4);
+  color: inherit;
+  text-decoration: none;
 }
+
+.summary-card:hover,
+.summary-card:focus-visible { border-color: rgba(233, 185, 73, 0.45); }
+.summary-card__arrow { position: absolute; right: var(--space-4); bottom: var(--space-4); width: 17px; height: 17px; color: var(--color-text-subtle); }
 
 .summary-label {
   color: var(--color-text-muted);
@@ -187,6 +234,8 @@
 }
 
 @media (max-width: 640px) {
+  .home-quick-actions__grid { grid-template-columns: 1fr; }
+  .home-action { min-height: 78px; padding: var(--space-3); }
   .home-section {
     margin-bottom: var(--space-4);
     padding: var(--space-4);

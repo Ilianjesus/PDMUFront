@@ -9,7 +9,6 @@ import {
   verifyEmailOtp,
 } from "../services/auth/supabaseAuth";
 import { getCurrentOperatorProfile } from "../services/operatorProfileService";
-
 export function AuthProvider({ children }) {
   const [authStatus, setAuthStatus] = useState("loading");
   const [session, setSession] = useState(null);

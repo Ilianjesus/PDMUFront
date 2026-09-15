@@ -228,7 +228,8 @@ export function Estadisticas() {
       <div className="page-shell__inner">
         <PageHeader
           eyebrow="Análisis"
-          title="Estadísticas"
+          title="Reportes"
+          description="Indicadores de asistencia, pagos e inscripciones para dar seguimiento a la operación."
           infoTooltip="Indicadores históricos para revisar pagos, asistencia e inscripciones por periodo."
           menuActions={[
             {

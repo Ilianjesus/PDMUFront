@@ -52,6 +52,27 @@ describe("supabase business mappers", () => {
     expect(result.curp).toBe("https://example.test/curp.pdf");
   });
 
+  it("no presenta como vigente un documento reemplazado", () => {
+    const result = mapElementDetails({
+      element: {
+        elementId: "element-1",
+        givenNames: "Ana",
+        paternalSurname: "López",
+        birthDate: "2010-01-15",
+        sexCode: "F",
+      },
+      documents: [
+        {
+          type: "curp",
+          status: "replaced",
+          downloadUrl: "https://example.test/curp-anterior.pdf",
+        },
+      ],
+    });
+
+    expect(result.curp).toBeUndefined();
+  });
+
   it("convierte centavos y estados del estado de cuenta", () => {
     const result = mapPaymentStatementResponse({
       elementId: "element-1",

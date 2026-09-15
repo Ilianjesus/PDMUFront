@@ -26,6 +26,7 @@ function mapDocumentMetadata(documents) {
   if (!Array.isArray(documents)) return {};
 
   return documents.reduce((fields, document) => {
+    if (document?.status && document.status !== "active") return fields;
     const formField = DOCUMENT_FORM_FIELDS[document?.type];
     const documentUrl =
       normalizeText(document?.downloadUrl) ||
@@ -246,6 +247,10 @@ export function mapElementDetails(payload) {
     Tutor: normalizeText(element.guardianName),
     TelefonoTutor: normalizeText(element.guardianPhone),
     IsSelfTutor: Boolean(element.isSelfTutor ?? element.is_self_tutor),
+    assetJobStatus: element.assetJobStatus ?? null,
+    assetJobAttempts: element.assetJobAttempts ?? 0,
+    assetJobErrorCode: element.assetJobErrorCode ?? null,
+    assetJobUpdatedAt: element.assetJobUpdatedAt ?? null,
     enrollmentId: element.enrollmentId ?? null,
     enrollmentCode: element.enrollmentCode ?? "",
     enrolledOn: element.enrolledOn ?? null,

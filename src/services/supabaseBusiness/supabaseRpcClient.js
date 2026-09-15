@@ -51,6 +51,12 @@ const ERROR_MESSAGES = Object.freeze({
     "El documento debe ser un PDF válido de hasta 10 MB.",
   INVALID_ELEMENT_ASSETS:
     "La carpeta o los documentos devueltos por la automatización no son válidos.",
+  INVALID_ELEMENT_ASSET_JOB:
+    "No se pudo preparar el trabajo documental.",
+  ELEMENT_ASSET_JOB_NOT_FOUND:
+    "No se encontró el trabajo documental.",
+  IDEMPOTENCY_CONFLICT:
+    "La solicitud ya existe con información diferente.",
   LAST_ACTIVE_ADMIN_REQUIRED:
     "Debe permanecer al menos una cuenta administradora activa.",
   PAYMENT_PERIOD_NOT_APPLICABLE:

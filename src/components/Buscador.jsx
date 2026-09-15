@@ -6,6 +6,7 @@ import "../styles/Buscador.css";
 
 const Buscador = ({
   placeholder = "Buscar...",
+  ariaLabel = placeholder,
   onSeleccionar,
   resetSignal = 0,
 }) => {
@@ -94,7 +95,7 @@ const Buscador = ({
 
       <input
         type="text"
-        aria-label={placeholder}
+        aria-label={ariaLabel}
         placeholder={placeholder}
         value={query}
         onChange={(e) => setQuery(e.target.value)}

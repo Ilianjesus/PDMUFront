@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import Buscador from "../components/Buscador";
 import ModuloInfo from "../components/ModuloInfo";
 import ModuloPagos from "../components/ModuloPagos";
@@ -18,7 +19,10 @@ import {
   FileText,
   RefreshCw,
   Search,
+  SlidersHorizontal,
   UserX,
+  UserPlus,
+  X,
 } from "lucide-react";
 
 import "../styles/PanelAdmin.css";
@@ -63,6 +67,8 @@ function normalizeGroupText(value) {
 }
 
 const PanelAdmin = () => {
+  const navigate = useNavigate();
+  const { elementId = "", section = "informacion" } = useParams();
   const [seleccionado, setSeleccionado] = useState(null);
   const [modulo, setModulo] = useState("");
   const [data, setData] = useState(null);
@@ -73,6 +79,8 @@ const PanelAdmin = () => {
   const [elementosError, setElementosError] = useState("");
   const [filtroRama, setFiltroRama] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filtersRef = useRef(null);
   const [bajaDialog, setBajaDialog] = useState({
     visible: false,
     reason: "",
@@ -84,9 +92,9 @@ const PanelAdmin = () => {
     return () => window.clearTimeout(timer);
   }, [mensaje]);
 
-  const mostrarMensaje = (texto, tipo = "success") => {
+  const mostrarMensaje = useCallback((texto, tipo = "success") => {
     setMensaje({ texto, tipo });
-  };
+  }, []);
 
   const cargarElementos = useCallback(async () => {
     try {
@@ -107,8 +115,26 @@ const PanelAdmin = () => {
   }, []);
 
   useEffect(() => {
-    cargarElementos();
-  }, [cargarElementos]);
+    if (!elementId) cargarElementos();
+  }, [cargarElementos, elementId]);
+
+  useEffect(() => {
+    if (!filtersOpen) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (!filtersRef.current?.contains(event.target)) setFiltersOpen(false);
+    };
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") setFiltersOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [filtersOpen]);
 
   useEffect(() => {
     if (!seleccionado?.ID) return undefined;
@@ -120,7 +146,7 @@ const PanelAdmin = () => {
     return () => window.cancelAnimationFrame(frame);
   }, [seleccionado?.ID]);
 
-  const handleCargarModulo = async (moduloSeleccionado, item = seleccionado) => {
+  const handleCargarModulo = useCallback(async (moduloSeleccionado, item) => {
     if (!item?.ID) {
       mostrarMensaje("Selecciona un elemento primero", "error");
       return;
@@ -134,9 +160,21 @@ const PanelAdmin = () => {
 
     try {
       let result;
+      let resolvedItem = item;
+
+      if (moduloSeleccionado !== "Informacion" && !item.displayName) {
+        const profileResult = await getElement({
+          elementId: item.ID,
+          include: ["profile"],
+        });
+        if (!profileResult.ok) throw new Error(profileResult.message);
+        resolvedItem = profileResult.data;
+        setSeleccionado(resolvedItem);
+      }
+
       const elementName =
-        item.displayName ||
-        `${item.Nombre ?? ""} ${item.ApellidoPaterno ?? ""} ${item.ApellidoMaterno ?? ""}`.trim();
+        resolvedItem.displayName ||
+        `${resolvedItem.Nombre ?? ""} ${resolvedItem.ApellidoPaterno ?? ""} ${resolvedItem.ApellidoMaterno ?? ""}`.trim();
 
       if (moduloSeleccionado === "Informacion") {
         result = await getElement({
@@ -165,6 +203,9 @@ const PanelAdmin = () => {
         setData(null);
       } else {
         setData(responseData);
+        if (moduloSeleccionado === "Informacion") {
+          setSeleccionado((current) => ({ ...current, ...responseData }));
+        }
       }
     } catch (error) {
       console.error(error);
@@ -178,10 +219,28 @@ const PanelAdmin = () => {
     } finally {
       setCargando(false);
     }
-  };
+  }, [mostrarMensaje]);
+
+  useEffect(() => {
+    if (!elementId) {
+      setSeleccionado(null);
+      setModulo("");
+      setData(null);
+      return;
+    }
+
+    const moduleBySection = {
+      informacion: "Informacion",
+      pagos: "Pagos",
+      asistencias: "Asistencias",
+    };
+    void handleCargarModulo(moduleBySection[section] || "Informacion", {
+      ID: elementId,
+    });
+  }, [elementId, handleCargarModulo, section]);
 
   const handleSeleccionar = (item) => {
-    handleCargarModulo("Informacion", item);
+    navigate(`/elementos/${item.ID}/informacion`);
   };
 
   const handleVolverListado = () => {
@@ -190,6 +249,7 @@ const PanelAdmin = () => {
     setData(null);
     setMensaje(null);
     setBajaDialog({ visible: false, reason: "" });
+    navigate("/elementos");
   };
 
   const handleElementDataChange = useCallback((updatedElement) => {
@@ -249,8 +309,7 @@ const PanelAdmin = () => {
       setSeleccionado(null);
       setModulo("");
       setData(null);
-      await cargarElementos();
-      mostrarMensaje(result.message || "Elemento dado de baja correctamente.");
+      navigate("/elementos");
     } catch (error) {
       console.error("Error dando de baja:", error);
       mostrarMensaje(error?.message || "No se pudo dar de baja el elemento.", "error");
@@ -284,6 +343,11 @@ const PanelAdmin = () => {
   }, [elementos, filtroCategoria, filtroRama]);
 
   const filtrosActivos = Boolean(filtroRama || filtroCategoria);
+  const activeFilterLabels = [
+    BRANCH_FILTERS.find((filter) => filter.value === filtroRama)?.label,
+    CATEGORY_FILTERS.find((filter) => filter.value === filtroCategoria)?.label,
+  ].filter(Boolean);
+  const filterSummary = activeFilterLabels.join(" · ");
   const directoryCountLabel = cargandoElementos
     ? "Cargando elementos"
     : filtrosActivos
@@ -307,6 +371,14 @@ const PanelAdmin = () => {
           }
           onBack={seleccionado ? handleVolverListado : undefined}
           backLabel="Volver a elementos"
+          actions={
+            !seleccionado ? (
+              <Link className="ui-button page-header__primary-link" to="/elementos/nuevo">
+                <UserPlus aria-hidden="true" />
+                <span>Nueva inscripción</span>
+              </Link>
+            ) : undefined
+          }
           menuActions={
             !seleccionado
               ? [
@@ -330,91 +402,140 @@ const PanelAdmin = () => {
 
       {!seleccionado && (
         <div className="panel-directory-workspace">
-          <section className="panel-controls-surface" aria-label="Buscar y filtrar elementos">
-            <div className="panel-controls-surface__header">
-              <div>
-                <span>Consulta</span>
-                <h2>Búsqueda y filtros</h2>
-              </div>
-            </div>
-
-            <div className="panel-search" aria-label="Buscar elemento">
+          <section
+            className="panel-controls-surface"
+            aria-label="Buscar y filtrar elementos"
+            ref={filtersRef}
+          >
+            <div className="panel-search-toolbar">
               <div className="panel-search__field">
                 <Search aria-hidden="true" />
                 <Buscador
-                  placeholder="Buscar elemento"
+                  placeholder="Buscar"
+                  ariaLabel="Buscar elemento"
                   onSeleccionar={handleSeleccionar}
                 />
               </div>
+
+              <button
+                type="button"
+                className={`panel-filter-trigger${filtrosActivos ? " is-active" : ""}`}
+                onClick={() => setFiltersOpen((current) => !current)}
+                aria-expanded={filtersOpen}
+                aria-controls="element-filters"
+                aria-haspopup="true"
+                aria-label={
+                  filtrosActivos
+                    ? `Filtros activos: ${filterSummary}`
+                    : "Abrir filtros"
+                }
+                title={filterSummary || "Filtros"}
+              >
+                <SlidersHorizontal aria-hidden="true" />
+                <span>Filtros</span>
+                {activeFilterLabels.length > 0 && (
+                  <strong aria-hidden="true">{activeFilterLabels.length}</strong>
+                )}
+              </button>
             </div>
 
-            <div className="panel-filters" aria-label="Filtros de elementos">
-              <fieldset className="panel-filter-group">
-                <legend>Rama</legend>
-                <div className="panel-filter-segment" role="group" aria-label="Filtrar por rama">
-                  {BRANCH_FILTERS.map((filter) => (
+            {filtersOpen && (
+              <div
+                className="panel-filter-popover"
+                id="element-filters"
+                role="region"
+                aria-label="Filtros de elementos"
+              >
+                <div className="panel-filter-popover__header">
+                  <strong>Filtros</strong>
+                  <div>
+                    {filtrosActivos && (
+                      <button
+                        type="button"
+                        className="panel-clear-filters"
+                        onClick={() => {
+                          setFiltroRama("");
+                          setFiltroCategoria("");
+                        }}
+                        disabled={cargandoElementos}
+                      >
+                        Restablecer
+                      </button>
+                    )}
                     <button
                       type="button"
-                      key={filter.value}
-                      className={filtroRama === filter.value ? "active" : ""}
-                      onClick={() =>
-                        setFiltroRama((current) =>
-                          current === filter.value ? "" : filter.value
-                        )
-                      }
-                      disabled={cargandoElementos}
-                      aria-pressed={filtroRama === filter.value}
+                      className="panel-filter-close"
+                      onClick={() => setFiltersOpen(false)}
+                      aria-label="Cerrar filtros"
+                      title="Cerrar filtros"
                     >
-                      {filter.label}
+                      <X aria-hidden="true" />
                     </button>
-                  ))}
+                  </div>
                 </div>
-              </fieldset>
 
-              <fieldset className="panel-filter-group">
-                <legend>Categoría</legend>
-                <div className="panel-filter-segment" role="group" aria-label="Filtrar por categoría">
-                  {CATEGORY_FILTERS.map((filter) => (
-                    <button
-                      type="button"
-                      key={filter.value}
-                      className={filtroCategoria === filter.value ? "active" : ""}
-                      onClick={() =>
-                        setFiltroCategoria((current) =>
-                          current === filter.value ? "" : filter.value
-                        )
-                      }
-                      disabled={cargandoElementos}
-                      aria-pressed={filtroCategoria === filter.value}
-                    >
-                      {filter.label}
-                    </button>
-                  ))}
+                <div className="panel-filters">
+                  <fieldset className="panel-filter-group">
+                    <legend>Rama</legend>
+                    <div className="panel-filter-segment" role="group" aria-label="Filtrar por rama">
+                      <button
+                        type="button"
+                        className={!filtroRama ? "active" : ""}
+                        onClick={() => setFiltroRama("")}
+                        disabled={cargandoElementos}
+                        aria-pressed={!filtroRama}
+                      >
+                        Todas
+                      </button>
+                      {BRANCH_FILTERS.map((filter) => (
+                        <button
+                          type="button"
+                          key={filter.value}
+                          className={filtroRama === filter.value ? "active" : ""}
+                          onClick={() => setFiltroRama(filter.value)}
+                          disabled={cargandoElementos}
+                          aria-pressed={filtroRama === filter.value}
+                        >
+                          {filter.label}
+                        </button>
+                      ))}
+                    </div>
+                  </fieldset>
+
+                  <fieldset className="panel-filter-group">
+                    <legend>Categoría</legend>
+                    <div className="panel-filter-segment" role="group" aria-label="Filtrar por categoría">
+                      <button
+                        type="button"
+                        className={!filtroCategoria ? "active" : ""}
+                        onClick={() => setFiltroCategoria("")}
+                        disabled={cargandoElementos}
+                        aria-pressed={!filtroCategoria}
+                      >
+                        Todas
+                      </button>
+                      {CATEGORY_FILTERS.map((filter) => (
+                        <button
+                          type="button"
+                          key={filter.value}
+                          className={filtroCategoria === filter.value ? "active" : ""}
+                          onClick={() => setFiltroCategoria(filter.value)}
+                          disabled={cargandoElementos}
+                          aria-pressed={filtroCategoria === filter.value}
+                        >
+                          {filter.label}
+                        </button>
+                      ))}
+                    </div>
+                  </fieldset>
                 </div>
-              </fieldset>
-
-              {filtrosActivos && (
-                <button
-                  type="button"
-                  className="panel-clear-filters"
-                  onClick={() => {
-                    setFiltroRama("");
-                    setFiltroCategoria("");
-                  }}
-                  disabled={cargandoElementos}
-                >
-                  Limpiar filtros
-                </button>
-              )}
-            </div>
+              </div>
+            )}
           </section>
 
           <section className="panel-list-surface" aria-labelledby="elements-list-title">
             <div className="panel-list-surface__header">
-              <div>
-                <span>Directorio</span>
-                <h2 id="elements-list-title">Elementos activos</h2>
-              </div>
+              <h2 id="elements-list-title">Elementos activos</h2>
               <strong>{directoryCountLabel}</strong>
             </div>
 
@@ -473,7 +594,7 @@ const PanelAdmin = () => {
               <button
                 type="button"
                 className={`panel-btn${modulo === "Informacion" ? " active" : ""}`}
-                onClick={() => handleCargarModulo("Informacion")}
+                onClick={() => navigate(`/elementos/${seleccionado.ID}/informacion`)}
                 disabled={cargando}
                 aria-pressed={modulo === "Informacion"}
               >
@@ -483,7 +604,7 @@ const PanelAdmin = () => {
               <button
                 type="button"
                 className={`panel-btn${modulo === "Pagos" ? " active" : ""}`}
-                onClick={() => handleCargarModulo("Pagos")}
+                onClick={() => navigate(`/elementos/${seleccionado.ID}/pagos`)}
                 disabled={cargando}
                 aria-pressed={modulo === "Pagos"}
               >
@@ -493,7 +614,7 @@ const PanelAdmin = () => {
               <button
                 type="button"
                 className={`panel-btn${modulo === "Asistencias" ? " active" : ""}`}
-                onClick={() => handleCargarModulo("Asistencias")}
+                onClick={() => navigate(`/elementos/${seleccionado.ID}/asistencias`)}
                 disabled={cargando}
                 aria-pressed={modulo === "Asistencias"}
               >

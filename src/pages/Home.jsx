@@ -1,11 +1,23 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { puntos } from "../data/Puntos";
 import { getDashboardSummary } from "../services/dashboardService";
 import { StatusMessage } from "../components/ui/StatusMessage";
 import { PageHeader } from "../components/ui/PageHeader";
 import { EmptyState } from "../components/ui/EmptyState";
-import { AlertCircle, Info, RefreshCw } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowRight,
+  ClipboardCheck,
+  CreditCard,
+  Info,
+  RefreshCw,
+  Search,
+  UserPlus,
+} from "lucide-react";
 import "../styles/Home.css";
+
+const SHOW_PDMU_PRINCIPLE = false;
 
 function SectionTooltip({ label }) {
   return (
@@ -24,14 +36,15 @@ export function Home() {
   const [dashboardError, setDashboardError] = useState("");
 
   const [resumenRapido, setResumenRapido] = useState([
-    { label: "Elementos activos", value: "—" },
-    { label: "Pagos pendientes", value: "—" },
-    { label: "Asistencias hoy", value: "—" },
+    { label: "Elementos activos", value: "—", to: "/elementos" },
+    { label: "Pagos pendientes", value: "—", to: "/pagos" },
+    { label: "Asistencias hoy", value: "—", to: "/asistencia" },
   ]);
 
   const [alertasImportantes, setAlertasImportantes] = useState([]);
 
   useEffect(() => {
+    if (!SHOW_PDMU_PRINCIPLE) return;
     const index = Math.floor(Math.random() * puntos.length);
     setPuntoAleatorio(puntos[index]);
   }, []);
@@ -52,14 +65,17 @@ export function Home() {
         {
           label: "Elementos activos",
           value: resumen.elementosActivos ?? "—",
+          to: "/elementos",
         },
         {
           label: "Pagos pendientes",
           value: resumen.pagosPendientes ?? "—",
+          to: "/pagos",
         },
         {
           label: "Asistencias hoy",
           value: resumen.asistenciasHoy ?? "—",
+          to: "/asistencia",
         },
       ]);
 
@@ -82,9 +98,9 @@ export function Home() {
       );
 
       setResumenRapido([
-        { label: "Elementos activos", value: "—" },
-        { label: "Pagos pendientes", value: "—" },
-        { label: "Asistencias hoy", value: "—" },
+        { label: "Elementos activos", value: "—", to: "/elementos" },
+        { label: "Pagos pendientes", value: "—", to: "/pagos" },
+        { label: "Asistencias hoy", value: "—", to: "/asistencia" },
       ]);
 
       setAlertasImportantes([]);
@@ -102,7 +118,7 @@ export function Home() {
       <div className="page-shell__inner">
         <PageHeader
           title="Inicio"
-          description="Resumen operativo del día para revisar asistencia, pagos y pendientes."
+          description="Accesos rápidos y pendientes de la jornada."
           infoTooltip="Vista general para revisar pagos, asistencia y pendientes."
           menuActions={[
             {
@@ -115,10 +131,33 @@ export function Home() {
           ]}
         />
 
-        <aside className="principle-banner" aria-label="Principio PDMU">
-          <span>Principio PDMU</span>
-          <blockquote>{puntoAleatorio}</blockquote>
-        </aside>
+        <section className="home-quick-actions" aria-labelledby="quick-actions-title">
+          <div className="section-header">
+            <h2 className="section-title" id="quick-actions-title">¿Qué necesitas hacer?</h2>
+          </div>
+          <div className="home-quick-actions__grid">
+            <Link className="home-action home-action--primary" to="/asistencia">
+              <ClipboardCheck aria-hidden="true" />
+              <span><strong>Tomar asistencia</strong><small>Abrir una sesión y escanear QR.</small></span>
+              <ArrowRight aria-hidden="true" />
+            </Link>
+            <Link className="home-action" to="/elementos/nuevo">
+              <UserPlus aria-hidden="true" />
+              <span><strong>Nueva inscripción</strong><small>Capturar un expediente guiado.</small></span>
+              <ArrowRight aria-hidden="true" />
+            </Link>
+            <Link className="home-action" to="/pagos">
+              <CreditCard aria-hidden="true" />
+              <span><strong>Registrar pago</strong><small>Buscar un elemento y actualizar su cuenta.</small></span>
+              <ArrowRight aria-hidden="true" />
+            </Link>
+            <Link className="home-action" to="/elementos">
+              <Search aria-hidden="true" />
+              <span><strong>Buscar expediente</strong><small>Consultar información y documentos.</small></span>
+              <ArrowRight aria-hidden="true" />
+            </Link>
+          </div>
+        </section>
 
         {dashboardError && (
           <StatusMessage variant="error">
@@ -144,12 +183,13 @@ export function Home() {
 
           <div className="summary-grid">
             {resumenRapido.map((item) => (
-              <div className="summary-card" key={item.label} aria-busy={loadingStats}>
+              <Link className="summary-card" to={item.to} key={item.label} aria-busy={loadingStats}>
                 <span className="summary-label">{item.label}</span>
                 <strong className="summary-value">
                   {loadingStats ? "—" : item.value}
                 </strong>
-              </div>
+                <ArrowRight className="summary-card__arrow" aria-hidden="true" />
+              </Link>
             ))}
           </div>
         </section>
@@ -186,6 +226,13 @@ export function Home() {
             )}
           </div>
         </section>
+
+        {SHOW_PDMU_PRINCIPLE && (
+          <aside className="principle-banner" aria-label="Principio PDMU">
+            <span>Principio PDMU</span>
+            <blockquote>{puntoAleatorio}</blockquote>
+          </aside>
+        )}
       </div>
     </div>
   );

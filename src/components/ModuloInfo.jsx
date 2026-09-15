@@ -1,9 +1,19 @@
 import { useState, useEffect } from "react";
 import { StatusMessage } from "./ui/StatusMessage";
-import { Info, Pencil, Upload } from "lucide-react";
+import {
+  Camera,
+  CircleAlert,
+  Clock3,
+  FileText,
+  FileUp,
+  Info,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { BirthDateSelector } from "./ui/BirthDateSelector";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
 import {
+  removeElementDocument,
   setElementSelfTutor,
   updateElementField,
   uploadElementDocument,
@@ -37,6 +47,12 @@ const ModuloInfo = ({ data, readOnly = false, onDataChange }) => {
 
   const [selectedFiles, setSelectedFiles] = useState({});
   const [uploading, setUploading] = useState(null);
+  const [deletingDocument, setDeletingDocument] = useState(false);
+  const [documentDeleteDialog, setDocumentDeleteDialog] = useState({
+    visible: false,
+    document: null,
+    label: "",
+  });
   const [savingField, setSavingField] = useState(null);
   const [savingSelfTutor, setSavingSelfTutor] = useState(false);
   const [selfTutorDialog, setSelfTutorDialog] = useState({
@@ -57,6 +73,8 @@ const ModuloInfo = ({ data, readOnly = false, onDataChange }) => {
     setPendingField(null);
     setSelectedFiles({});
     setUploading(null);
+    setDeletingDocument(false);
+    setDocumentDeleteDialog({ visible: false, document: null, label: "" });
     setSavingField(null);
     setSavingSelfTutor(false);
     setSelfTutorDialog({
@@ -64,7 +82,6 @@ const ModuloInfo = ({ data, readOnly = false, onDataChange }) => {
       guardianName: "",
       guardianPhone: "",
     });
-    setMessage(null);
   }, [data]);
 
   const handleChange = (e) => {
@@ -176,10 +193,10 @@ const ModuloInfo = ({ data, readOnly = false, onDataChange }) => {
   const handleFileSelect = (field, file) => {
     if (!file) return;
 
-    if (file.type !== "application/pdf") {
+    if (file.type !== "application/pdf" && !file.type.startsWith("image/")) {
       setMessage({
         variant: "error",
-        text: "Selecciona un documento en formato PDF.",
+        text: "Selecciona una fotografía o un documento PDF.",
       });
       return;
     }
@@ -241,6 +258,52 @@ const ModuloInfo = ({ data, readOnly = false, onDataChange }) => {
       });
     } finally {
       setUploading(null);
+    }
+  };
+
+  const requestDocumentDelete = (documentRecord, label) => {
+    if (!documentRecord?.documentId || deletingDocument) return;
+    setDocumentDeleteDialog({
+      visible: true,
+      document: documentRecord,
+      label,
+    });
+  };
+
+  const closeDocumentDeleteDialog = () => {
+    if (deletingDocument) return;
+    setDocumentDeleteDialog({ visible: false, document: null, label: "" });
+  };
+
+  const confirmDocumentDelete = async () => {
+    const documentRecord = documentDeleteDialog.document;
+    if (!documentRecord?.documentId) return;
+
+    try {
+      setDeletingDocument(true);
+      setMessage(null);
+      const result = await removeElementDocument({
+        elementId: form.ID,
+        document: documentRecord,
+      });
+      if (!result.ok) throw new Error(result.message);
+
+      const updatedData = result.data || form;
+      setForm(updatedData);
+      onDataChange?.(updatedData);
+      setDocumentDeleteDialog({ visible: false, document: null, label: "" });
+      setMessage({
+        variant: "success",
+        text: result.message || "Documento eliminado correctamente.",
+      });
+    } catch (error) {
+      console.error("Error eliminando documento:", error);
+      setMessage({
+        variant: "error",
+        text: error?.message || "No se pudo eliminar el documento.",
+      });
+    } finally {
+      setDeletingDocument(false);
     }
   };
 
@@ -363,11 +426,9 @@ const ModuloInfo = ({ data, readOnly = false, onDataChange }) => {
 
   const getDocumentRecord = (type) => {
     const documents = Array.isArray(form.documents) ? form.documents : [];
-    return (
-      documents.find((document) => document.type === type && document.status === "active") ||
-      documents.find((document) => document.type === type) ||
-      null
-    );
+    return documents.find(
+      (document) => document.type === type && document.status === "active"
+    ) || null;
   };
 
   const getDocumentUrl = (field, document) => {
@@ -434,6 +495,9 @@ const ModuloInfo = ({ data, readOnly = false, onDataChange }) => {
   ];
 
   const enrollments = Array.isArray(form.enrollments) ? form.enrollments : [];
+  const assetJobInProgress = ["queued", "processing"].includes(form.assetJobStatus);
+  const assetJobFailed = form.assetJobStatus === "failed";
+  const assetJobCanRetry = Number(form.assetJobAttempts || 0) < 5;
   const isAdult = calculateAge(form.FechaNacimiento) >= 18;
   const selfTutorHint = form.IsSelfTutor
     ? "Tutor sincronizado"
@@ -523,19 +587,19 @@ const ModuloInfo = ({ data, readOnly = false, onDataChange }) => {
             <div className="field-action-row">
               <button
                 type="button"
-                className="field-save-btn"
-                onClick={() => requestConfirmEdit(name)}
-                disabled={isSavingThisField}
-              >
-                {isSavingThisField ? "Guardando..." : "Guardar"}
-              </button>
-              <button
-                type="button"
                 className="field-cancel-btn"
                 onClick={cancelEdit}
                 disabled={isSavingThisField}
               >
                 Cancelar
+              </button>
+              <button
+                type="button"
+                className="field-save-btn"
+                onClick={() => requestConfirmEdit(name)}
+                disabled={isSavingThisField}
+              >
+                {isSavingThisField ? "Guardando..." : "Guardar"}
               </button>
             </div>
           )}
@@ -723,6 +787,27 @@ const ModuloInfo = ({ data, readOnly = false, onDataChange }) => {
             </div>
           </div>
 
+          {(assetJobInProgress || assetJobFailed) && (
+            <div
+              className={`document-processing-note${assetJobFailed ? " document-processing-note--warning" : ""}`}
+              role="status"
+            >
+              {assetJobFailed ? <CircleAlert aria-hidden="true" /> : <Clock3 aria-hidden="true" />}
+              <div>
+                <strong>
+                  {assetJobFailed ? "Documentación pendiente" : "Procesando documentación"}
+                </strong>
+                <span>
+                  {assetJobFailed
+                    ? assetJobCanRetry
+                      ? "Se reintentará automáticamente en una sesión administrativa."
+                      : "Requiere revisión antes de volver a procesarse."
+                    : "El expediente se completará en segundo plano."}
+                </span>
+              </div>
+            </div>
+          )}
+
           {readOnly ? (
             <div className="documents-grid">
               {Array.isArray(form.documents) && form.documents.length > 0 ? (
@@ -745,19 +830,35 @@ const ModuloInfo = ({ data, readOnly = false, onDataChange }) => {
           {documentFields.map(({ field, label, placeholder, type }) => {
           const document = getDocumentRecord(type);
           const documentUrl = getDocumentUrl(field, document);
-          const hasDocument = isValidDocumentLink(documentUrl);
-          const isUploadingThisDocument = uploading === field;
+            const hasDocument = isValidDocumentLink(documentUrl);
+            const isUploadingThisDocument = uploading === field;
+            const selectedFile = selectedFiles[field];
+            const selectedFileIsPhoto = selectedFile?.type?.startsWith("image/");
 
-          return (
-            <div className="form-group document-group" key={field}>
-              <div className="document-group__header">
-                <span className="document-label">{label}</span>
-                <span className={`document-status ${hasDocument ? "document-status--complete" : "document-status--pending"}`}>
-                  {hasDocument ? "Completo" : "Pendiente"}
-                </span>
-              </div>
+            return (
+              <div className="form-group document-group" key={field}>
+                <div className="document-group__header">
+                  <span className="document-label">{label}</span>
+                  <div className="document-group__meta-actions">
+                    <span className={`document-status ${hasDocument ? "document-status--complete" : "document-status--pending"}`}>
+                      {hasDocument ? "Completo" : "Pendiente"}
+                    </span>
+                    {hasDocument && document?.documentId && (
+                      <button
+                        type="button"
+                        className="document-delete-btn"
+                        onClick={() => requestDocumentDelete(document, label)}
+                        disabled={deletingDocument || isUploadingThisDocument}
+                        aria-label={`Eliminar ${label}`}
+                        title={`Eliminar ${label}`}
+                      >
+                        <Trash2 aria-hidden="true" />
+                      </button>
+                    )}
+                  </div>
+                </div>
 
-              <div className="document-row">
+                <div className="document-row">
                 {hasDocument ? (
                   <a
                     href={documentUrl}
@@ -770,46 +871,72 @@ const ModuloInfo = ({ data, readOnly = false, onDataChange }) => {
                 ) : (
                   <span className="document-missing">{placeholder}</span>
                 )}
+                </div>
 
-                {!selectedFiles[field] ? (
-                  <label className="upload-btn">
-                    <Upload aria-hidden="true" />
-                    <span>{hasDocument ? "Reemplazar" : "Subir PDF"}</span>
-                    <input
-                      type="file"
-                      accept="application/pdf"
-                      hidden
-                      onChange={(e) => handleFileSelect(field, e.target.files[0])}
-                    />
-                  </label>
-                ) : null}
-
-                {selectedFiles[field] ? (
-                  <div className="upload-confirm-box">
-                    <span className="file-name">
-                      {selectedFiles[field].name}
-                    </span>
-
-                    <button
-                      type="button"
-                      className="confirm-upload"
-                      onClick={() => confirmUpload(field, type)}
-                      disabled={isUploadingThisDocument}
-                    >
-                      {isUploadingThisDocument ? "Subiendo..." : "Confirmar"}
-                    </button>
-
-                    <button
-                      type="button"
-                      className="cancel-upload"
-                      onClick={() => cancelFile(field)}
-                      disabled={isUploadingThisDocument}
-                    >
-                      Cancelar
-                    </button>
+                {!selectedFile ? (
+                  <div className="document-source-actions">
+                    <label className="document-source-btn">
+                      <Camera aria-hidden="true" />
+                      <span>Tomar foto</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        hidden
+                        onChange={(event) => {
+                          handleFileSelect(field, event.target.files?.[0]);
+                          event.target.value = "";
+                        }}
+                      />
+                    </label>
+                    <label className="document-source-btn">
+                      <FileUp aria-hidden="true" />
+                      <span>Adjuntar PDF</span>
+                      <input
+                        type="file"
+                        accept="application/pdf"
+                        hidden
+                        onChange={(event) => {
+                          handleFileSelect(field, event.target.files?.[0]);
+                          event.target.value = "";
+                        }}
+                      />
+                    </label>
                   </div>
-                ) : null}
-              </div>
+                ) : (
+                  <div className="upload-confirm-box">
+                    <div className="selected-document-file">
+                      <FileText aria-hidden="true" />
+                      <span>
+                        <strong>{selectedFile.name}</strong>
+                        <small>
+                          {selectedFileIsPhoto
+                            ? "La foto se convertirá a PDF"
+                            : "PDF listo para procesar"}
+                        </small>
+                      </span>
+                    </div>
+
+                    <div className="upload-confirm-actions">
+                      <button
+                        type="button"
+                        className="cancel-upload"
+                        onClick={() => cancelFile(field)}
+                        disabled={isUploadingThisDocument}
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        className="confirm-upload"
+                        onClick={() => confirmUpload(field, type)}
+                        disabled={isUploadingThisDocument}
+                      >
+                        {isUploadingThisDocument ? "Procesando..." : "Procesar"}
+                      </button>
+                    </div>
+                  </div>
+                )}
             </div>
           );
           })}
@@ -817,6 +944,17 @@ const ModuloInfo = ({ data, readOnly = false, onDataChange }) => {
           )}
         </section>
       </div>
+
+      <ConfirmDialog
+        open={documentDeleteDialog.visible}
+        title="Eliminar documento"
+        message={`Se retirará ${documentDeleteDialog.label || "este documento"} del expediente.`}
+        confirmLabel="Eliminar"
+        busy={deletingDocument}
+        destructive
+        onConfirm={confirmDocumentDelete}
+        onCancel={closeDocumentDeleteDialog}
+      />
 
       <ConfirmDialog
         open={showConfirmModal}
