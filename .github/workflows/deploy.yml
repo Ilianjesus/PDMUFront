@@ -15,6 +15,13 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      VITE_SUPABASE_DOCUMENTS_BUCKET: element-documents
+      VITE_SUPABASE_INTAKE_BUCKET: element-intake
+      VITE_N8N_ELEMENTS_ASSETS_URL: ${{ secrets.VITE_N8N_ELEMENTS_ASSETS_URL }}
+      VITE_BASE_PATH: /PDMUFront/
 
     steps:
       - name: Checkout
@@ -33,13 +40,6 @@ jobs:
         run: npm run lint && npm test
 
       - name: Build app
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-          VITE_SUPABASE_DOCUMENTS_BUCKET: element-documents
-          VITE_SUPABASE_INTAKE_BUCKET: element-intake
-          VITE_N8N_ELEMENTS_ASSETS_URL: ${{ secrets.VITE_N8N_ELEMENTS_ASSETS_URL }}
-          VITE_BASE_PATH: /PDMUFront/
         run: npm run build
 
       - name: Deploy to GitHub Pages
