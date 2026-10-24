@@ -225,6 +225,37 @@ function rpcPayload(functionName) {
     };
   }
 
+  if (functionName === "list_activity_sessions") {
+    return { ok: true, items: [] };
+  }
+
+  if (functionName === "upsert_attendance_activity") {
+    return {
+      ok: true,
+      activity: {
+        activityId: "77777777-7777-4777-8777-777777777777",
+        name: "Instrucción",
+        category: "mandatory",
+        status: "active",
+      },
+    };
+  }
+
+  if (functionName === "create_activity_session") {
+    return {
+      ok: true,
+      session: {
+        sessionId: "88888888-8888-4888-8888-888888888888",
+        activityId: "77777777-7777-4777-8777-777777777777",
+        activityName: "Instrucción",
+        sessionDate: nowIso.slice(0, 10),
+        category: "mandatory",
+        attendanceRequired: true,
+        status: "open",
+      },
+    };
+  }
+
   return { ok: true, items: [] };
 }
 
@@ -544,6 +575,15 @@ test.describe("producto autenticado", () => {
     expect(Math.abs(box.y + box.height / 2 - viewport.height / 2)).toBeLessThan(50);
     await assertNoHorizontalOverflow(page);
     await page.screenshot({ path: testInfo.outputPath("attendance-modal.png"), fullPage: false });
+  });
+
+  test("inicia una asistencia recurrente con una sola decisión", async ({ page }) => {
+    await page.goto("#/asistencia");
+
+    await page.getByRole("button", { name: "Instrucción", exact: true }).click();
+
+    await expect(page).toHaveURL(/#\/asistencia\/escaner\?session=88888888-8888-4888-8888-888888888888&autostart=1$/);
+    await expect(page.getByRole("heading", { name: "Tomar asistencia" })).toBeVisible();
   });
 
   test("permite fotografiar y eliminar documentos del expediente", async ({ page }, testInfo) => {

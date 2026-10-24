@@ -7,7 +7,7 @@ import {
 } from "../services/attendanceService";
 import { StatusMessage } from "./ui/StatusMessage";
 import { PageHeader } from "./ui/PageHeader";
-import { Camera, CheckCircle2, Play, RotateCcw, XCircle } from "lucide-react";
+import { Camera, CheckCircle2, Play, RotateCcw, ScanLine, XCircle } from "lucide-react";
 import "../styles/Scanner.css";
 
 const CAMERA_START_TIMEOUT_MS = 12000;
@@ -91,6 +91,8 @@ export function Scanner() {
   const scannerRef = useRef(null);
   const pendingCodes = useRef(new Set());
   const sentCodes = useRef(new Set());
+  const processingRef = useRef(false);
+  const autoStartAttempted = useRef(false);
 
   const selectedSession = sessions.find(
     (session) => session.sessionId === selectedSessionId
@@ -152,15 +154,21 @@ export function Scanner() {
     const normalizedResult = String(result).trim();
     if (
       !normalizedResult ||
+      processingRef.current ||
       pendingCodes.current.has(normalizedResult) ||
       sentCodes.current.has(normalizedResult)
     ) return;
 
+    processingRef.current = true;
     pendingCodes.current.add(normalizedResult);
-    setScanning(false);
     setProcessing(true);
     setScannerError("");
-    void stopScanner();
+
+    try {
+      scannerRef.current?.pause(true);
+    } catch {
+      // Algunos navegadores entregan el resultado cuando el lector ya está en pausa.
+    }
 
     try {
       if (!selectedSessionId) {
@@ -176,8 +184,8 @@ export function Scanner() {
 
       if (!attendanceResult.ok) {
         setScanResults((prev) => [
-          ...prev,
           { id: normalizedResult, status: "Fallido" },
+          ...prev,
         ]);
         setScannerError(attendanceResult.message);
         return;
@@ -185,7 +193,6 @@ export function Scanner() {
 
       sentCodes.current.add(normalizedResult);
       setScanResults((prev) => [
-        ...prev,
         {
           id:
             attendanceResult.data?.matchedElement?.displayName ||
@@ -193,19 +200,28 @@ export function Scanner() {
             normalizedResult,
           status: "Enviado",
         },
+        ...prev,
       ]);
     } catch (err) {
       console.error("No se pudo registrar el escaneo:", err);
       setScanResults((prev) => [
-        ...prev,
         { id: normalizedResult, status: "Fallido" },
+        ...prev,
       ]);
       setScannerError("Error al registrar el escaneo. Puedes intentar de nuevo.");
     } finally {
       pendingCodes.current.delete(normalizedResult);
+      processingRef.current = false;
       setProcessing(false);
+      window.setTimeout(() => {
+        try {
+          scannerRef.current?.resume();
+        } catch {
+          // Si la cámara se cerró, el botón de reintento permanece disponible.
+        }
+      }, 450);
     }
-  }, [selectedSessionId, stopScanner]);
+  }, [selectedSessionId]);
 
   const handleScanError = useCallback(() => undefined, []);
 
@@ -304,6 +320,19 @@ export function Scanner() {
   ]);
 
   useEffect(() => {
+    const shouldAutoStart = searchParams.get("autostart") === "1";
+    if (
+      !shouldAutoStart ||
+      autoStartAttempted.current ||
+      loadingSessions ||
+      !selectedSessionId
+    ) return;
+
+    autoStartAttempted.current = true;
+    void startScanner();
+  }, [loadingSessions, searchParams, selectedSessionId, startScanner]);
+
+  useEffect(() => {
     return () => {
       stopScanner();
     };
@@ -318,9 +347,8 @@ export function Scanner() {
     <div className="scanner-container page-shell">
       <div className="page-shell__inner">
         <PageHeader
-          eyebrow="Control de asistencia"
-          title="Escáner QR"
-          description="Alinea el código dentro del marco. El registro se procesa automáticamente al detectarlo."
+          title="Tomar asistencia"
+          description="Escanea los códigos uno tras otro."
           onBack={() => navigate("/asistencia")}
           backLabel="Volver a asistencia"
         />
@@ -332,23 +360,23 @@ export function Scanner() {
               <div>
                 <h2 id="scanner-status-title">
                   {processing
-                    ? "Procesando registro"
+                    ? "Registrando"
                     : startingCamera
                     ? "Activando cámara"
                     : scanning
-                    ? "Cámara activa"
+                    ? "Listo para escanear"
                     : hasStartedScan
                     ? "Escaneo finalizado"
                     : "Escáner listo"}
                 </h2>
                 <p>
                   {processing
-                    ? "Espera mientras confirmamos la asistencia."
+                    ? "Mantén la cámara apuntando al siguiente código."
                     : startingCamera
                     ? "Autoriza el permiso de cámara si el navegador lo solicita."
                     : scanning
-                    ? selectedSession
-                      ? `Sesión: ${selectedSession.activityName} · ${selectedSession.sessionDate}`
+                      ? selectedSession
+                      ? `${selectedSession.activityName} · ${selectedSession.sessionDate}`
                       : "Selecciona una sesión antes de escanear."
                     : hasStartedScan
                     ? "Puedes iniciar un nuevo escaneo cuando estés listo."
@@ -396,11 +424,6 @@ export function Scanner() {
               <div className="scanner-processing" role="status" aria-live="polite">
                 Selecciona una sesión para activar la cámara.
               </div>
-            ) : processing ? (
-              <div className="scanner-processing" role="status" aria-live="polite">
-                <span className="loading-state__spinner" aria-hidden="true" />
-                Validando con el sistema...
-              </div>
             ) : (
               <div className="scanner-box-wrap">
                 {startingCamera && (
@@ -421,6 +444,12 @@ export function Scanner() {
                     </button>
                   </div>
                 )}
+                {processing && (
+                  <div className="scanner-feedback" role="status" aria-live="polite">
+                    <span className="loading-state__spinner" aria-hidden="true" />
+                    Registrando...
+                  </div>
+                )}
                 <div
                   id={scannerTargetId.current}
                   className="scanner-box"
@@ -432,11 +461,17 @@ export function Scanner() {
 
           <section className="scanner-results" aria-labelledby="scanner-results-title">
             <div className="scanner-results__header">
-              <h2 id="scanner-results-title">Actividad de la sesión</h2>
-              <span>{scanResults.length} registros</span>
+              <div>
+                <h2 id="scanner-results-title">Registrados</h2>
+                <span>{selectedSession?.activityName || "Sesión actual"}</span>
+              </div>
+              <strong>{scanResults.length}</strong>
             </div>
             {scanResults.length === 0 ? (
-              <p className="scanner-results__empty">Los resultados aparecerán aquí después del primer escaneo.</p>
+              <div className="scanner-results__empty">
+                <ScanLine aria-hidden="true" />
+                <span>El primer registro aparecerá aquí.</span>
+              </div>
             ) : (
               <ul className="results-list">
                 {scanResults.map((res, idx) => (

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Buscador from "../components/Buscador";
 import { LoadingState } from "../components/ui/LoadingState";
 import { StatusMessage } from "../components/ui/StatusMessage";
@@ -10,14 +10,25 @@ import {
   registerAttendance,
   saveAttendanceActivity,
 } from "../services/attendanceService";
-import { CalendarDays, ChevronLeft, ChevronRight, Plus, ScanLine, X } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardPenLine,
+  Dumbbell,
+  Plus,
+  ScanLine,
+  ShieldCheck,
+  Waves,
+  X,
+} from "lucide-react";
 import "../styles/global.css";
 
 const ATTENDANCE_TYPES = [
-  { id: "instruccion", label: "Instrucción", category: "mandatory" },
-  { id: "natacion", label: "Natación", category: "activity" },
-  { id: "atletismo", label: "Atletismo", category: "activity" },
-  { id: "personalizado", label: "Personalizado", category: "event" },
+  { id: "instruccion", label: "Instrucción", category: "mandatory", icon: ShieldCheck },
+  { id: "natacion", label: "Natación", category: "activity", icon: Waves },
+  { id: "atletismo", label: "Atletismo", category: "activity", icon: Dumbbell },
+  { id: "personalizado", label: "Otra actividad", category: "event", icon: Plus },
 ];
 
 function toInputDate(date) {
@@ -141,6 +152,7 @@ const INITIAL_TYPE_FORM = {
 };
 
 export function RegistrarAsistencia() {
+  const navigate = useNavigate();
   const [currentMonth, setCurrentMonth] = useState(monthStart(new Date()));
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -290,11 +302,20 @@ export function RegistrarAsistencia() {
     setTypeModalDate(null);
   };
 
-  const handleCreateSessionFromType = async () => {
-    if (!typeModalDate || !typeName) {
+  const handleCreateSessionFromType = async ({
+    typeId = typeForm.type,
+    customName = typeForm.customName,
+    required = typeForm.required,
+    destination = "manual",
+  } = {}) => {
+    const targetDate = typeModalDate || today;
+    const targetType = ATTENDANCE_TYPES.find((type) => type.id === typeId);
+    const targetName = typeId === "personalizado" ? customName.trim() : targetType?.label ?? "";
+
+    if (!targetDate || !targetName) {
       setMensaje({
         tipo: "error",
-        texto: "Selecciona o captura el tipo de asistencia.",
+        texto: "Selecciona una actividad.",
       });
       return;
     }
@@ -303,50 +324,64 @@ export function RegistrarAsistencia() {
       setBusy(true);
       setMensaje(null);
 
-      const existingSession = modalDaySessions.find(
+      const daySessions = sessionsByDate[targetDate] ?? [];
+      const existingSession = daySessions.find(
         (session) =>
-          normalizeSessionName(session.activityName) === normalizeSessionName(typeName)
+          normalizeSessionName(session.activityName) === normalizeSessionName(targetName)
       );
 
       if (existingSession) {
-        openAttendanceSession(existingSession);
+        if (destination === "scanner") {
+          navigate(`/asistencia/escaner?session=${existingSession.sessionId}&autostart=1`);
+        } else {
+          openAttendanceSession(existingSession);
+        }
         return;
       }
 
       const activityResult = await saveAttendanceActivity({
-        name: typeName,
-        category: selectedType?.category ?? "activity",
+        name: targetName,
+        category: targetType?.category ?? "activity",
       });
 
       if (!activityResult.ok) throw new Error(activityResult.message);
 
-      const existingByActivityId = modalDaySessions.find(
+      const existingByActivityId = daySessions.find(
         (session) => session.activityId === activityResult.data.activityId
       );
 
       if (existingByActivityId) {
-        openAttendanceSession(existingByActivityId);
+        if (destination === "scanner") {
+          navigate(`/asistencia/escaner?session=${existingByActivityId.sessionId}&autostart=1`);
+        } else {
+          openAttendanceSession(existingByActivityId);
+        }
         return;
       }
 
       const sessionResult = await createActivitySession({
         activityId: activityResult.data.activityId,
-        sessionDate: typeModalDate,
-        attendanceScope: typeForm.required ? "all_active" : "open",
-        attendanceRequired: typeForm.required,
+        sessionDate: targetDate,
+        attendanceScope: required ? "all_active" : "open",
+        attendanceRequired: required,
         status: "open",
       });
 
       if (!sessionResult.ok) throw new Error(sessionResult.message);
 
-      await loadSessions();
-      setAttendanceSession({
+      const createdSession = {
         sessionId: sessionResult.data?.sessionId ?? sessionResult.data?.session?.sessionId,
-        activityName: typeName,
-        sessionDate: typeModalDate,
+        activityName: targetName,
+        sessionDate: targetDate,
         startsAt: "",
-        categoryLabel: typeForm.required ? "Obligatoria" : "Extra",
-      });
+        categoryLabel: required ? "Obligatoria" : "Extra",
+      };
+      if (destination === "scanner") {
+        navigate(`/asistencia/escaner?session=${createdSession.sessionId}&autostart=1`);
+        return;
+      }
+      await loadSessions();
+      setAttendanceSession(createdSession);
       setElementoSeleccionado(null);
       setAttendanceSearchResetKey((current) => current + 1);
       setAttendanceStatus("present");
@@ -410,7 +445,7 @@ export function RegistrarAsistencia() {
       <div className="page-shell__inner">
         <PageHeader
           title="Asistencia"
-          description="Abre una sesión de hoy y registra por QR o búsqueda manual."
+          description="Selecciona una actividad y comienza a escanear."
         />
 
         {mensaje && (
@@ -450,6 +485,37 @@ export function RegistrarAsistencia() {
               </button>
             </div>
 
+            <div className="attendance-quick-start" aria-label="Inicio rápido">
+              <span>Inicio rápido</span>
+              <div>
+                {ATTENDANCE_TYPES.map((type) => {
+                  const TypeIcon = type.icon;
+                  return (
+                    <button
+                      type="button"
+                      key={type.id}
+                      onClick={() => {
+                        if (type.id === "personalizado") {
+                          openTypeModal(today);
+                          setTypeForm({ type: type.id, customName: "", required: false });
+                          return;
+                        }
+                        handleCreateSessionFromType({
+                          typeId: type.id,
+                          required: type.category === "mandatory",
+                          destination: "scanner",
+                        });
+                      }}
+                      disabled={busy}
+                    >
+                      <TypeIcon aria-hidden="true" />
+                      <span>{type.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {loading ? (
               <LoadingState compact label="Cargando sesiones de hoy..." />
             ) : todaySessions.length > 0 ? (
@@ -463,10 +529,10 @@ export function RegistrarAsistencia() {
                     </div>
                     <div className="attendance-today-session__actions">
                       <button type="button" className="ui-button ui-button--secondary" onClick={() => openAttendanceSession(session)}>
-                        Registro manual
+                        <ClipboardPenLine aria-hidden="true" /> Manual
                       </button>
-                      <Link className="ui-button" to={`/asistencia/escaner?session=${session.sessionId}`}>
-                        <ScanLine aria-hidden="true" /> Escanear QR
+                      <Link className="ui-button" to={`/asistencia/escaner?session=${session.sessionId}&autostart=1`}>
+                        <ScanLine aria-hidden="true" /> Tomar asistencia
                       </Link>
                     </div>
                   </article>
@@ -683,22 +749,26 @@ export function RegistrarAsistencia() {
               )}
 
               <div className="attendance-type-grid">
-                {ATTENDANCE_TYPES.map((type) => (
-                  <button
-                    type="button"
-                    className={`attendance-type-option${typeForm.type === type.id ? " active" : ""}`}
-                    key={type.id}
-                    onClick={() =>
-                      setTypeForm((current) => ({
-                        ...current,
-                        type: type.id,
-                        required: type.category === "mandatory",
-                      }))
-                    }
-                  >
-                    {type.label}
-                  </button>
-                ))}
+                {ATTENDANCE_TYPES.map((type) => {
+                  const TypeIcon = type.icon;
+                  return (
+                    <button
+                      type="button"
+                      className={`attendance-type-option${typeForm.type === type.id ? " active" : ""}`}
+                      key={type.id}
+                      onClick={() =>
+                        setTypeForm((current) => ({
+                          ...current,
+                          type: type.id,
+                          required: type.category === "mandatory",
+                        }))
+                      }
+                    >
+                      <TypeIcon aria-hidden="true" />
+                      {type.label}
+                    </button>
+                  );
+                })}
               </div>
 
               {typeForm.type === "personalizado" && (
@@ -736,10 +806,11 @@ export function RegistrarAsistencia() {
               <button
                 type="button"
                 className="button attendance-modal__primary"
-                onClick={handleCreateSessionFromType}
+                onClick={() => handleCreateSessionFromType({ destination: "scanner" })}
                 disabled={busy || !typeName}
               >
-                {busy ? "Abriendo..." : "Abrir registro"}
+                <ScanLine aria-hidden="true" />
+                {busy ? "Preparando..." : "Crear y escanear"}
               </button>
             </section>
           </div>
