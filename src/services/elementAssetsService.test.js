@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { supabase } from "./auth/supabaseClient";
 import {
   provisionElementAssets,
@@ -22,6 +22,7 @@ vi.mock("./auth/supabaseClient", () => ({
 describe("provisionElementAssets", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.stubEnv("VITE_N8N_ELEMENTS_ASSETS_URL", "https://example.test/webhook");
     supabase.auth.getSession.mockResolvedValue({
       data: { session: { access_token: "session-token" } },
       error: null,
@@ -31,6 +32,10 @@ describe("provisionElementAssets", () => {
       remove: vi.fn().mockResolvedValue({ data: {}, error: null }),
     });
     supabase.rpc.mockResolvedValue({ data: { ok: true, job: {} }, error: null });
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("envía la inscripción y los documentos como multipart al webhook configurado", async () => {
