@@ -32,6 +32,10 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+        env:
+          VITE_SUPABASE_URL: https://pdmu-test.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_e2e_test
+          VITE_N8N_ELEMENTS_ASSETS_URL: https://workflow.pdmu.test/webhook/test
 
   mark-ready:
     needs: verify
