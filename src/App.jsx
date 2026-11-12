@@ -2,7 +2,7 @@ import { lazy, Suspense } from "react";
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Login } from "./pages/Login";
 import { Layout } from "./components/Layout";
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider } from "./contexts/AuthProvider";
 import { RequireAuth } from "./components/RequireAuth";
 import { AuthenticatedShell } from "./components/AuthenticatedShell";
 import { LoadingState } from "./components/ui/LoadingState";

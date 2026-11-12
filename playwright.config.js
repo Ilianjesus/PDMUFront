@@ -12,10 +12,13 @@ export default defineConfig({
     baseURL: "http://127.0.0.1:4174/PDMUFront/",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
-    launchOptions: {
-      executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH || "/snap/bin/chromium",
-      args: ["--no-sandbox"],
-    },
+    launchOptions: process.env.PLAYWRIGHT_CHROMIUM_PATH
+      ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH }
+      : process.env.CI
+        ? {}
+      : process.platform === "linux"
+        ? { executablePath: "/snap/bin/chromium", args: ["--no-sandbox"] }
+        : { channel: "chrome" },
   },
   projects: [
     {
